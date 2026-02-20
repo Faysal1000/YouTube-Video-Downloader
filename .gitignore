@@ -1,0 +1,18 @@
+# Python
+__pycache__
+*.pyc
+*.pyo
+desktop/dist
+desktop/build
+desktop/*.spec
+
+# Downloads
+server/downloads
+server/__pycache__
+# ffmpeg (auto-downloaded by build.py)
+desktop/ffmpeg_bin
+server/ffmpeg_bin
+
+# OS
+.DS_Store
+Thumbs.db
