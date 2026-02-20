@@ -29,8 +29,5 @@ RUN mkdir -p downloads
 ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
 
-# Expose the port
-EXPOSE 8080
-
 # Run the server using uvicorn (bind to 0.0.0.0 for Docker)
-CMD uvicorn server:app --host 0.0.0.0 --port ${PORT:-8080}
+CMD uvicorn server:app --host 0.0.0.0 --port $PORT
