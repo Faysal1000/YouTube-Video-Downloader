@@ -128,6 +128,19 @@ The Local Server turns your computer into a powerful private CDN for video downl
 
 ---
 
+## ☁️ Deploy to Railway (Server Mode)
+
+Deploy your private downloader in 2 minutes:
+
+1.  **Create a New Project**: On [Railway.app](https://railway.app/), click **New Project** → **Deploy from GitHub**.
+2.  **Select Repository**: Choose your `YouTube-Video-Downloader` repo.
+3.  **No Config Needed**: I've already added `Procfile` and `nixpacks.toml` to automatically install `ffmpeg` and start the server.
+4.  **Add Domain**: In your Railway service settings, click **Generate Domain** to get your public URL.
+
+---
+
+---
+
 ## 👨‍💻 Developed By
 
 <div align="left">
