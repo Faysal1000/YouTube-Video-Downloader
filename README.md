@@ -15,10 +15,18 @@
 </p>
 
 <!-- Preview Image 2 -->
-<p align="center">
-  <img src="macos_installer_custom_theme.png" alt="MacOS Installer" width="45%" style="border-radius: 10px; border: 1px solid #252530; box-shadow: 0 10px 30px rgba(0,0,0,0.5); vertical-align: middle; margin-right: 10px;" />
-  <img src="desktop.png" alt="DesktopApp Interface" width="45%" style="border-radius: 10px; border: 1px solid #252530; box-shadow: 0 10px 30px rgba(0,0,0,0.5); vertical-align: middle;" />
-</p>
+<div align="center">
+  <table>
+    <tr>
+      <td valign="middle">
+        <img src="macos_installer_custom_theme.png" alt="MacOS Installer" width="400" style="border-radius: 10px; border: 1px solid #252530; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+      </td>
+      <td valign="middle">
+        <img src="desktop.png" alt="DesktopApp Interface" width="400" style="border-radius: 10px; border: 1px solid #252530; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+      </td>
+    </tr>
+  </table>
+</div>
 
 <!-- Badges -->
 <p align="center">
