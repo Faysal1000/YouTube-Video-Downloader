@@ -6,12 +6,18 @@
 </h1>
 
 <p align="center">
-  <b>A state-of-the-art multimedia downloading suite featuring a sleek Desktop GUI and a mobile-friendly Local Server. Built for speed, reliability, and ease of use.</b>
+  <b>A state-of-the-art multimedia downloading suite featuring a sleek Desktop GUI and a mobile-friendly Local Server. Built for speed, reliability, and ease of use. Available for Windows & macOS.</b>
 </p>
 
 <!-- Preview Image -->
 <p align="center">
   <img src="landing_page.png" alt="App Interface" width="800" style="border-radius: 10px; border: 1px solid #252530; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
+</p>
+
+<!-- Preview Image 2 -->
+<p align="center">
+  <img src="desktop.png" alt="DesktopApp Interface" width="45%" style="border-radius: 10px; border: 1px solid #252530; box-shadow: 0 10px 30px rgba(0,0,0,0.5); margin-right: 10px;" />
+  <img src="macos_installer_custom_theme.png" alt="MacOS Installer" width="45%" style="border-radius: 10px; border: 1px solid #252530; box-shadow: 0 10px 30px rgba(0,0,0,0.5);" />
 </p>
 
 <!-- Badges -->
@@ -86,7 +92,7 @@ ytdl-app/
 
 ## 🖥️ Desktop Application (Pro GUI)
 
-The Desktop App is built for performance and deep integration with Windows/macOS.
+The Desktop App is built for performance and deep integration with **Windows & macOS**.
 
 - **Standalone Build**: Uses `PyInstaller` to bundle everything into a single `.exe` or `.app`.
 - **Zero-Dependency**: Bundles `ffmpeg` and `yt-dlp` automatically.
