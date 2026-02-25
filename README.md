@@ -1,12 +1,11 @@
 <div align="center">
 
-<!-- Animated Header -->
 <h1 align="center">
-  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&pause=1000&color=00D4C8&center=true&vCenter=true&width=500&lines=YouTube+Downloader+Pro;Developed+by+Faysal+Ahmmed;High-Speed+Multi-Format;Desktop+%2B+Server+Solution" alt="Typing SVG" />
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=700&size=32&pause=1000&color=00D4C8&center=true&vCenter=true&width=600&lines=Youtube+Downloader+Pro;High-Fidelity+Media+Engine;Desktop+%2B+Local+Cloud;Smart+Version+Control" alt="Typing SVG" />
 </h1>
 
 <p align="center">
-  <b>A state-of-the-art multimedia downloading suite featuring a sleek Desktop GUI and a mobile-friendly Local Server. Built for speed, reliability, and ease of use. Available for Windows & macOS.</b>
+  <b>The ultimate multimedia downloading ecosystem. Featuring a premium Desktop GUI and a mobile-friendly Local Server. Engineered for speed, stability, and intelligent updates.</b>
 </p>
 
 <!-- Preview Image -->
@@ -108,6 +107,21 @@ The Desktop App is built for performance and deep integration with **Windows & m
 
 ---
 
+## 🔄 Smart Version Control & OTA Updates
+
+The application features an **Intelligent Lifecycle Management** system that ensures you are always running the latest and most stable code.
+
+> [!IMPORTANT]
+> **How OTA Updates Work:**
+> - **Continuous Polling**: On startup, the app performs a lightweight check against the `version.json` on the GitHub `main` branch.
+> - **Release Matching**: If a newer version is detected, the app dynamically retrieves the platform-specific installer URL (macOS dmg, Windows exe) defined in the cloud.
+> - **Seamless Downloads**: Users are notified via a premium modal dialog and can initiate the download with a single click.
+> - **Zero-Config Changes**: The developer can change download locations or release tags in the cloud (via `version.json`) without requiring users to manually re-install.
+
+---
+
+---
+
 ## 🌐 Local Server & Web GUI
 
 The Local Server turns your computer into a powerful private CDN for video downloads. This module has been **fully deployed with a high-end Web GUI**.
@@ -157,13 +171,13 @@ Deploy your private downloader in 2 minutes:
 
 ## 👨‍💻 Developed By
 
-<div align="left">
-  <h3>Faysal Ahmmed</h3>
-  <p>Dedicated to building high-performance, user-centric software solutions.</p>
+<div align="center">
+  <img src="https://img.shields.io/badge/Designed%20%26%20Built%20by-Faysal%20Ahmmed-00D4C8?style=for-the-badge&logo=github" alt="Faysal Ahmmed" />
+  <p><i>Crafting high-performance, user-centric software for the modern era.</i></p>
 </div>
 
 ---
 
 <p align="center">
-  <i>"Fast, Fluid, and Reliable — The Ultimate Downloader Experience."</i>
+  <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&size=16&pause=3000&color=7060AA&center=true&vCenter=true&width=435&lines=Fast.+Fluid.+Reliable.;The+Ultimate+Downloader+Experience." alt="Typing SVG" />
 </p>
