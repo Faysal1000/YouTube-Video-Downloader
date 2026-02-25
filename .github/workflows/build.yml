@@ -14,13 +14,10 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact_pattern: "*.exe"
             suffix: "win"
           - os: macos-latest
-            artifact_pattern: "*ARM.dmg"
             suffix: "mac-arm"
           - os: ubuntu-latest
-            artifact_pattern: "*Linux"
             suffix: "linux"
 
     steps:
@@ -41,10 +38,12 @@ jobs:
         run: python desktop/build.py
         shell: bash
 
-      - name: Rename and Upload Artifact
+      - name: Robust Artifact Collection
         run: |
           mkdir -p staging
-          cp desktop/dist/${{ matrix.artifact_pattern }} staging/
+          # Find the built binary/dmg in dist, ignoring hidden files and the directory itself
+          # This is name-agnostic and handles spaces perfectly
+          find desktop/dist -maxdepth 1 -mindepth 1 ! -name ".*" -exec cp -rv "{}" staging/ \;
         shell: bash
 
       - name: Upload Artifact
@@ -71,10 +70,8 @@ jobs:
       - name: Prepare Release Files
         run: |
           mkdir -p release_files
-          # Use find to be robust against spaces and directory structures
-          find artifacts/youtube-downloader-win -name "*.exe" -exec cp {} release_files/ \;
-          find artifacts/youtube-downloader-mac-arm -name "*.dmg" -exec cp {} release_files/ \;
-          find artifacts/youtube-downloader-linux -name "*Linux" -exec cp {} release_files/ \;
+          # Gather everything from all artifacts into one folder for the release
+          find artifacts -type f -exec cp -v {} release_files/ \;
 
       - name: Create Release and Upload
         uses: softprops/action-gh-release@v2
