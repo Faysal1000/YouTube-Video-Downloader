@@ -1,0 +1,7 @@
+{
+    "version": "1.0.0",
+    "mac_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/latest/download/YouTube.Downloader.dmg",
+    "win_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/latest/download/YouTube.Downloader.exe",
+    "linux_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/latest/download/YouTube.Downloader",
+    "changelog": "Initial release"
+}
