@@ -115,7 +115,17 @@ The Desktop App is built for performance and deep integration with **Windows & m
 
 If you see a message saying **"Apple could not verify YouTube Downloader..."**, follow these steps:
 
-### Method: The Pro Way (Terminal)
+### Method 1: System Settings (Official Apple Method)
+1. On your Mac, choose **Apple menu** > **System Settings**.
+2. Click **Privacy & Security** in the sidebar (you may need to scroll down).
+3. Go to **Security**, then click **Open Anyway**.
+   - *Note: This button is available for about an hour after you try to open the app.*
+4. Enter your login password, then click **OK**.
+
+> [!TIP]
+> These steps are the official instructions provided by Apple themselves for opening apps from unidentified developers.
+
+### Method 2: The Pro Way (Terminal)
 Run this command to remove the "quarantine" flag added by macOS:
 ```bash
 sudo xattr -rd com.apple.quarantine "/Applications/YouTube Downloader v1.0.0.app"
