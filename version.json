@@ -1,7 +1,7 @@
 {
     "version": "1.0.0",
-    "mac_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/latest/download/YouTube_Downloader_v1.0.0_ARM.dmg",
-    "win_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/latest/download/YouTube_Downloader_v1.0.0.exe",
-    "linux_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/latest/download/YouTube_Downloader_v1.0.0_Linux",
+    "mac_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/download/v1.0.0/YouTube_Downloader_v1.0.0_ARM.dmg",
+    "win_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/download/v1.0.0/YouTube_Downloader_v1.0.0.exe",
+    "linux_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/download/v1.0.0/YouTube_Downloader_v1.0.0_Linux",
     "changelog": "Initial release"
 }
