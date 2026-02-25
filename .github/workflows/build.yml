@@ -14,13 +14,13 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact_name: "YouTube Downloader.exe"
+            artifact_pattern: "*.exe"
             suffix: "win"
           - os: macos-latest
-            artifact_name: "YouTube Downloader ARM.dmg"
+            artifact_pattern: "*.dmg"
             suffix: "mac-arm"
           - os: ubuntu-latest
-            artifact_name: "YouTube Downloader"
+            artifact_pattern: "YouTube Downloader*"
             suffix: "linux"
 
     steps:
@@ -42,10 +42,16 @@ jobs:
         shell: bash
 
       - name: Rename and Upload Artifact
+        run: |
+          mkdir -p staging
+          cp desktop/dist/${{ matrix.artifact_pattern }} staging/
+        shell: bash
+
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: youtube-downloader-${{ matrix.suffix }}
-          path: desktop/dist/${{ matrix.artifact_name }}
+          path: staging/
 
   release:
     name: Create GitHub Release
@@ -64,11 +70,10 @@ jobs:
 
       - name: Prepare Release Files
         run: |
-          VERSION=$(jq -r .version version.json)
           mkdir -p release_files
-          cp artifacts/youtube-downloader-win/*.exe release_files/YouTube_Downloader_v${VERSION}.exe || true
-          cp artifacts/youtube-downloader-mac-arm/*.dmg release_files/YouTube_Downloader_v${VERSION}_ARM.dmg || true
-          cp artifacts/youtube-downloader-linux/YouTube\ Downloader release_files/YouTube_Downloader_v${VERSION}_Linux || true
+          cp artifacts/youtube-downloader-win/*.exe release_files/ || true
+          cp artifacts/youtube-downloader-mac-arm/*.dmg release_files/ || true
+          cp artifacts/youtube-downloader-linux/YouTube\ Downloader* release_files/ || true
 
       - name: Create Release and Upload
         uses: softprops/action-gh-release@v2
