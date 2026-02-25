@@ -70,8 +70,12 @@ jobs:
       - name: Prepare Release Files
         run: |
           mkdir -p release_files
-          # Gather everything from all artifacts into one folder for the release
-          find artifacts -type f -exec cp -v {} release_files/ \;
+          # Specifically pick ONLY the final installers/binaries
+          # This prevents uploading thousands of internal library files
+          find artifacts -name "*.exe" -exec cp -v {} release_files/ \;
+          find artifacts -name "*.dmg" -exec cp -v {} release_files/ \;
+          # For Linux, we find the binary that was versioned with "_Linux"
+          find artifacts -name "*_Linux" -exec cp -v {} release_files/ \;
 
       - name: Create Release and Upload
         uses: softprops/action-gh-release@v2
