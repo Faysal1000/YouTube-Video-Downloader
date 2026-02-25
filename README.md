@@ -104,6 +104,24 @@ The Desktop App is built for performance and deep integration with **Windows & m
 - **Standalone Build**: Uses `PyInstaller` to bundle everything into a single `.exe` or `.app`.
 - **Zero-Dependency**: Bundles `ffmpeg` and `yt-dlp` automatically.
 - **Windows Taskbar Fix**: Uses `ctypes.windll` to set a custom `AppUserModelID` for proper icon grouping.
+- **macOS Security (Gatekeeper)**: Since this app is built via GitHub Actions and not signed with a $99/year Apple Developer certificate, macOS will block it by default. See the [Bypass Instructions](#-macos-security-bypass) below.
+
+---
+
+## 🛡️ macOS Security Bypass
+
+> [!NOTE]
+> **A Note from the Developer:** As a junior developer, I currently don't have the budget for the $99/year Apple Developer License. This is the only reason the app is "unverified." This project is **100% open-source and safe**. You can audit every line of code here, or even build it yourself from source if you prefer!
+
+If you see a message saying **"Apple could not verify YouTube Downloader..."**, follow these steps:
+
+### Method: The Pro Way (Terminal)
+Run this command to remove the "quarantine" flag added by macOS:
+```bash
+sudo xattr -rd com.apple.quarantine "/Applications/YouTube Downloader v1.0.0.app"
+```
+- The app will now open normally with a double-click from now on.
+
 
 ---
 
