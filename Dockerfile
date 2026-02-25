@@ -15,6 +15,7 @@ WORKDIR /app
 
 # Copy the server directory contents and the requirements file
 COPY server/ /app/server/
+COPY version.json /app/version.json
 
 # Set working directory to the server folder
 WORKDIR /app/server
@@ -22,12 +23,15 @@ WORKDIR /app/server
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Create downloads directory
-RUN mkdir -p downloads
+# Create downloads directory with proper permissions
+RUN mkdir -p downloads && chmod 777 downloads
 
-# Set environment variables
-ENV PORT=8080
+# Set environment variables for Hugging Face Spaces
+ENV PORT=7860
 ENV PYTHONUNBUFFERED=1
+
+# Expose the port
+EXPOSE 7860
 
 # Run the server using uvicorn (bind to 0.0.0.0 for Docker)
 CMD uvicorn server:app --host 0.0.0.0 --port $PORT

@@ -12,13 +12,13 @@ ARCHITECTURE:
 5. Final Report: Generates a summary of the produced artifacts.
 """
 
-import os, sys, shutil, subprocess, tarfile, zipfile, urllib.request, platform, struct, zlib, time
-from pathlib import Path
+# Load version from version.json
+import json
+with open(Path(__file__).parent.parent / 'version.json') as f:
+    VERSION = json.load(f).get('version', '1.0.0')
 
-# --- Build Pipeline Configuration ---
-
-# The user-facing name of the final application
-APP_NAME   = 'YouTube Downloader'
+# The user-facing name of the final application with version
+APP_NAME   = f'YouTube Downloader v{VERSION}'
 
 # Path resolution for core files and output target
 SCRIPT     = Path(__file__).parent / 'app.py'
@@ -38,7 +38,6 @@ ARCH    = platform.machine().lower()
 FFMPEG = {
     'win':      'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip',
     'mac_arm':  'https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffmpeg.zip',
-    'mac_x86':  'https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffmpeg.zip',
     'linux':    'https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz',
 }
 
@@ -46,7 +45,6 @@ FFMPEG = {
 DENO = {
     'win':      'https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip',
     'mac_arm':  'https://github.com/denoland/deno/releases/latest/download/deno-aarch64-apple-darwin.zip',
-    'mac_x86':  'https://github.com/denoland/deno/releases/latest/download/deno-x86_64-apple-darwin.zip',
     'linux':    'https://github.com/denoland/deno/releases/latest/download/deno-x86_64-unknown-linux-gnu.zip',
 }
 
@@ -137,10 +135,10 @@ def download_ffmpeg():
         arch_path.unlink(missing_ok=True)
 
     elif IS_MAC:
-        is_arm = ARCH in ('arm64','aarch64')
-        url = FFMPEG['mac_arm'] if is_arm else FFMPEG['mac_x86']
+        # User specified ARM one only for Mac
+        url = FFMPEG['mac_arm']
         arch_path = Path('_ff.zip')
-        dl(url, arch_path, f'FFmpeg (macOS-{"arm64" if is_arm else "x86_64"})')
+        dl(url, arch_path, 'FFmpeg (macOS-arm64)')
         with zipfile.ZipFile(arch_path) as z:
             for member in z.namelist():
                 if Path(member).name == 'ffmpeg':
@@ -186,7 +184,7 @@ def download_deno():
 
     url = ''
     if IS_WIN: url = DENO['win']
-    elif IS_MAC: url = DENO['mac_arm'] if ARCH in ('arm64','aarch64') else DENO['mac_x86']
+    elif IS_MAC: url = DENO['mac_arm']
     elif IS_LIN: url = DENO['linux']
 
     if url:
@@ -554,6 +552,11 @@ end tell
     shutil.rmtree(stage)
 
     print(f'[DONE] Disk Image finalized: {dmg_final.name}')
+
+    # Cleanup: Remove the .app bundle as requested, keeping only the DMG in dist
+    if app_path.exists():
+        print(f'  Status: Purging source bundle {app_path.name}...')
+        shutil.rmtree(app_path)
 
 
 def _simple_dmg(app_path: Path, dmg_final: Path):

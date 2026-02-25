@@ -1,0 +1,79 @@
+name: Build and Push to Hugging Face
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  build-desktop:
+    name: Build Desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: "YouTube Downloader.exe"
+            suffix: "win"
+          - os: macos-latest
+            artifact_name: "YouTube Downloader ARM.dmg"
+            suffix: "mac-arm"
+          - os: ubuntu-latest
+            artifact_name: "YouTube Downloader"
+            suffix: "linux"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install yt-dlp yt-dlp-ejs pyinstaller pillow
+
+      - name: Build Binary
+        run: python desktop/build.py
+        shell: bash
+
+      - name: Rename and Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: youtube-downloader-${{ matrix.suffix }}
+          path: desktop/dist/${{ matrix.artifact_name }}
+
+  release:
+    name: Create GitHub Release
+    needs: build-desktop
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare Release Files
+        run: |
+          VERSION=$(jq -r .version version.json)
+          mkdir -p release_files
+          cp artifacts/youtube-downloader-win/*.exe release_files/YouTube_Downloader_v${VERSION}.exe || true
+          cp artifacts/youtube-downloader-mac-arm/*.dmg release_files/YouTube_Downloader_v${VERSION}_ARM.dmg || true
+          cp artifacts/youtube-downloader-linux/YouTube\ Downloader release_files/YouTube_Downloader_v${VERSION}_Linux || true
+
+      - name: Create Release and Upload
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release_files/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false

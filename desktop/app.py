@@ -680,7 +680,7 @@ class App:
         # Version display badge
         pro_f = tk.Frame(hdr, bg=ACCENT_D, padx=7, pady=2)
         pro_f.pack(side='right', padx=16, pady=18)
-        tk.Label(pro_f, text=f'V-{APP_VERSION}', bg=ACCENT_D, fg='#FFFFFF',
+        tk.Label(pro_f, text=f'v{APP_VERSION}', bg=ACCENT_D, fg='#FFFFFF',
                  font=(F_MONO[0], 9, 'bold')).pack()
 
         # Division line
