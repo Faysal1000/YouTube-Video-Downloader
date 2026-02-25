@@ -69,13 +69,14 @@ jobs:
 
       - name: Prepare Release Files
         run: |
+          VERSION=$(jq -r .version version.json)
           mkdir -p release_files
           # Specifically pick ONLY the final installers/binaries
-          # This prevents uploading thousands of internal library files
-          find artifacts -name "*.exe" -exec cp -v {} release_files/ \;
-          find artifacts -name "*.dmg" -exec cp -v {} release_files/ \;
-          # For Linux, we find the binary that was versioned with "_Linux"
-          find artifacts -name "*_Linux" -exec cp -v {} release_files/ \;
+          # We rename them to clean, standardized names during the copy
+          find artifacts/youtube-downloader-win -name "*.exe" -exec cp -v {} release_files/YouTube_Downloader_v${VERSION}.exe \;
+          find artifacts/youtube-downloader-mac-arm -name "*.dmg" -exec cp -v {} release_files/YouTube_Downloader_v${VERSION}_ARM.dmg \;
+          # For Linux, find the only file in the artifact folder and give it the _Linux suffix
+          find artifacts/youtube-downloader-linux -maxdepth 1 -type f -exec cp -v {} release_files/YouTube_Downloader_v${VERSION}_Linux \;
 
       - name: Create Release and Upload
         uses: softprops/action-gh-release@v2
