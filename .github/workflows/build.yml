@@ -1,4 +1,4 @@
-name: Build and Push to Hugging Face
+name: Build and Release V1.0.0
 
 on:
   push:
