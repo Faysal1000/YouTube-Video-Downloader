@@ -12,9 +12,10 @@ ARCHITECTURE:
 5. Final Report: Generates a summary of the produced artifacts.
 """
 
-# Load version from version.json
-import json
+import os, sys, shutil, subprocess, tarfile, zipfile, urllib.request, platform, struct, zlib, time, json
 from pathlib import Path
+
+# Load version from version.json
 with open(Path(__file__).parent.parent / 'version.json') as f:
     VERSION = json.load(f).get('version', '1.0.0')
 
