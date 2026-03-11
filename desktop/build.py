@@ -643,18 +643,19 @@ def report():
     hdr('Pipeline: 4 / 4  -  Build Optimization Complete')
 
     artifact = None
-    for candidate in [OUT_DIR / f'{APP_NAME}.exe', 
-                      OUT_DIR / f'{APP_NAME}.app', 
+    for candidate in [OUT_DIR / f'{APP_NAME}.exe',
+                      OUT_DIR / f'{APP_NAME}.app',
                       OUT_DIR / APP_NAME]:
-        if candidate.exists(): 
+        if candidate.exists():
             artifact = candidate
             break
 
     if not artifact:
-        print('[FAIL] Deployment target missing. Check engine logs above.'); return
+        print('[FAIL] Deployment target missing. Check engine logs above.')
+        return
 
     # Restore executable permissions if on Linux
-    if IS_LIN and artifact.is_file(): 
+    if IS_LIN and artifact.is_file():
         artifact.chmod(0o755)
 
     # Estimate bundle size
@@ -675,12 +676,166 @@ def report():
             print(f'  Size:    ~{dmg_mb} MB')
 
     print('\n[SYSTEM] Distribution Readiness:')
-    if IS_WIN:   
-        print('  - Windows: Portable EXE generated. No runtime installers required.')
-    elif IS_MAC: 
+
+    # =========================================================================
+    # WINDOWS — Inno Setup installer (.exe)
+    # =========================================================================
+    if IS_WIN:
+        print('  - Windows: Building installer EXE...')
+
+        portable_exe  = OUT_DIR / f'{APP_NAME}.exe'
+        installer_exe = OUT_DIR / f'{APP_NAME}_Setup.exe'
+        iss_script    = OUT_DIR / 'installer.iss'
+        icon_setup_line = f'SetupIconFile="{ICO.resolve()}"' if ICO.exists() else ''
+
+        iss_content = (
+            f'; Inno Setup script for {APP_NAME}\n'
+            f'[Setup]\n'
+            f'AppName={APP_NAME}\n'
+            f'AppVersion={VERSION}\n'
+            f'DefaultDirName={{autopf}}\\{APP_NAME}\n'
+            f'DefaultGroupName={APP_NAME}\n'
+            f'OutputDir={OUT_DIR.resolve()}\n'
+            f'OutputBaseFilename={APP_NAME}_Setup\n'
+            f'Compression=lzma\n'
+            f'SolidCompression=yes\n'
+            + (f'{icon_setup_line}\n' if icon_setup_line else '')
+            + f'\n'
+            f'[Files]\n'
+            f'Source: "{portable_exe.resolve()}"; DestDir: "{{app}}"; Flags: ignoreversion\n'
+            f'Source: "{FFMPEG_DIR.resolve()}\\*"; DestDir: "{{app}}\\ffmpeg_bin"; '
+            f'Flags: ignoreversion recursesubdirs createallsubdirs\n'
+            f'\n'
+            f'[Icons]\n'
+            f'Name: "{{group}}\\{APP_NAME}"; Filename: "{{app}}\\{APP_NAME}.exe"\n'
+            f'Name: "{{userdesktop}}\\{APP_NAME}"; Filename: "{{app}}\\{APP_NAME}.exe"; '
+            f'Tasks: desktopicon\n'
+            f'\n'
+            f'[Tasks]\n'
+            f'Name: "desktopicon"; Description: "Create a &desktop icon"; '
+            f'GroupDescription: "Additional icons:"\n'
+        )
+
+        iss_script.write_text(iss_content, encoding='utf-8')
+
+        # Search for Inno Setup compiler across all common install locations
+        def _find_iscc():
+            # 1. Check if it's already on PATH
+            on_path = shutil.which('ISCC')
+            if on_path:
+                return on_path
+            # 2. Search common Inno Setup install directories
+            search_roots = [
+                os.environ.get('ProgramFiles',        r'C:\Program Files'),
+                os.environ.get('ProgramFiles(x86)',   r'C:\Program Files (x86)'),
+                os.environ.get('ProgramW6432',        r'C:\Program Files'),
+                os.environ.get('LOCALAPPDATA',        ''),
+            ]
+            for root in search_roots:
+                if not root:
+                    continue
+                root_path = Path(root)
+                # Walk one level into any folder that starts with "Inno Setup"
+                if root_path.exists():
+                    for folder in root_path.iterdir():
+                        if folder.is_dir() and folder.name.lower().startswith('inno setup'):
+                            candidate = folder / 'ISCC.exe'
+                            if candidate.exists():
+                                return str(candidate)
+            return None
+
+        iscc_path = _find_iscc()
+
+        if iscc_path:
+            print(f'[INSTALLER] Inno Setup found: {iscc_path}')
+            print('[INSTALLER] Building installer EXE...')
+            run([iscc_path, str(iss_script)])
+
+            if installer_exe.exists():
+                # Remove portable EXE and .iss — only the installer remains in dist
+                portable_exe.unlink(missing_ok=True)
+                iss_script.unlink(missing_ok=True)
+                ins_mb = installer_exe.stat().st_size // 1024 // 1024
+                print(f'\n  Installer : {installer_exe.name}')
+                print(f'  Location  : {installer_exe.resolve()}')
+                print(f'  Size      : ~{ins_mb} MB')
+                print(f'\n[DONE] Double-click "{installer_exe.name}" to install.')
+            else:
+                print('[FAIL] Installer build failed. Portable EXE kept as fallback.')
+        else:
+            print('[WARN] Inno Setup not found anywhere on this machine.')
+            print('       Download and install from: https://jrsoftware.org/isinfo.php')
+            print('       Then re-run this build script — the portable EXE is kept in dist/ for now.')
+
+    # =========================================================================
+    # LINUX — makeself self-extracting installer (.run)
+    # =========================================================================
+    elif IS_LIN:
+        print('  - Linux: Building self-extracting installer...')
+
+        bin_path     = OUT_DIR / APP_NAME
+        stage_dir    = OUT_DIR / f'{APP_NAME}_installer_stage'
+        installer_sh = OUT_DIR / f'{APP_NAME}_Installer.run'
+
+        if stage_dir.exists():
+            shutil.rmtree(stage_dir)
+        stage_dir.mkdir(parents=True)
+
+        # Copy binary into staging folder, preserving executable bit
+        shutil.copy2(bin_path, stage_dir / APP_NAME)
+        (stage_dir / APP_NAME).chmod(0o755)
+
+        # Copy ffmpeg binaries alongside the app
+        shutil.copytree(FFMPEG_DIR, stage_dir / 'ffmpeg_bin')
+
+        # Write a proper install script that puts everything in ~/APP_NAME
+        install_sh = stage_dir / 'install.sh'
+        install_sh.write_text(
+            '#!/bin/bash\n'
+            f'INSTALL_DIR="$HOME/{APP_NAME}"\n'
+            'mkdir -p "$INSTALL_DIR"\n'
+            f'cp -r ./{APP_NAME} "$INSTALL_DIR/"\n'
+            'cp -r ./ffmpeg_bin "$INSTALL_DIR/"\n'
+            f'chmod +x "$INSTALL_DIR/{APP_NAME}"\n'
+            f'echo "Installed to: $INSTALL_DIR"\n'
+            f'echo "Run with: \\"$INSTALL_DIR/{APP_NAME}\\""\n',
+            encoding='utf-8'
+        )
+        install_sh.chmod(0o755)
+
+        makeself_path = shutil.which('makeself')
+        if makeself_path:
+            run([
+                makeself_path,
+                str(stage_dir),
+                str(installer_sh),
+                APP_NAME,
+                './install.sh',
+            ])
+
+            if installer_sh.exists():
+                # Clean up staging dir and raw binary — only .run remains
+                shutil.rmtree(stage_dir)
+                bin_path.unlink(missing_ok=True)
+                ins_mb = installer_sh.stat().st_size // 1024 // 1024
+                print(f'\n  Installer : {installer_sh.name}')
+                print(f'  Location  : {installer_sh.resolve()}')
+                print(f'  Size      : ~{ins_mb} MB')
+                print(f'\n[DONE] Run: chmod +x "{installer_sh.name}" && ./{installer_sh.name}')
+            else:
+                print('[FAIL] Installer build failed. Raw binary kept as fallback.')
+        else:
+            shutil.rmtree(stage_dir)
+            print('[WARN] makeself not found. Raw binary kept in dist/ instead.')
+            print('       Install makeself:  sudo apt install makeself')
+            print('       Then re-run this build script.')
+
+    # =========================================================================
+    # MACOS — unchanged
+    # =========================================================================
+    elif IS_MAC:
         print('  - macOS:   DMG ready. Advise users of the "Right-click -> Open" bypass.')
-    elif IS_LIN: 
-        print('  - Linux:   Static binary generated. Binary is chmod +x ready.')
+
     print()
 
 
@@ -706,11 +861,11 @@ def main():
     download_ffmpeg()
     # download_deno() # Optional: Uncomment to include JS runtime support
     build()
-    
+
     if IS_MAC:
         codesign_app()
         package_dmg()
-        
+
     report()
 
 if __name__ == '__main__':
