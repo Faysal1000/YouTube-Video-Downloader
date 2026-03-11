@@ -2,8 +2,8 @@ name: Build and Release V1.0.0
 
 on:
   push:
-    branches: [ main, master ]
-    tags: [ 'v*' ]
+    branches: [main, master]
+    tags: ["v*"]
   workflow_dispatch:
 
 jobs:
@@ -26,23 +26,37 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install yt-dlp yt-dlp-ejs pyinstaller pillow
 
+      # -----------------------------------------------------------------------
+      # Windows: Install Inno Setup so ISCC.exe is available for build.py
+      # -----------------------------------------------------------------------
+      - name: Install Inno Setup (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          choco install innosetup --yes --no-progress
+        shell: bash
+
+      # -----------------------------------------------------------------------
+      # Linux: Install makeself so the .run installer can be created
+      # -----------------------------------------------------------------------
+      - name: Install makeself (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y makeself
+
       - name: Build Binary
         run: python desktop/build.py
         shell: bash
 
-      - name: Robust Artifact Collection
+      - name: Collect Artifacts
         run: |
           mkdir -p staging
-          # Find the built binary/dmg in dist, ignoring hidden files and the directory itself
-          # This is name-agnostic and handles spaces perfectly
           find desktop/dist -maxdepth 1 -mindepth 1 ! -name ".*" -exec cp -rv "{}" staging/ \;
         shell: bash
 
@@ -59,6 +73,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - uses: actions/checkout@v4
 
@@ -71,12 +86,27 @@ jobs:
         run: |
           VERSION=$(jq -r .version version.json)
           mkdir -p release_files
-          # Specifically pick ONLY the final installers/binaries
-          # We rename them to clean, standardized names during the copy
-          find artifacts/youtube-downloader-win -name "*.exe" -exec cp -v {} release_files/YouTube_Downloader_v${VERSION}.exe \;
-          find artifacts/youtube-downloader-mac-arm -name "*.dmg" -exec cp -v {} release_files/YouTube_Downloader_v${VERSION}_ARM.dmg \;
-          # For Linux, find the only file in the artifact folder and give it the _Linux suffix
-          find artifacts/youtube-downloader-linux -maxdepth 1 -type f -exec cp -v {} release_files/YouTube_Downloader_v${VERSION}_Linux \;
+
+          # Windows: _Setup.exe is the installer (portable .exe was deleted by build.py)
+          find artifacts/youtube-downloader-win \
+            -name "*_Setup.exe" \
+            -exec cp -v {} release_files/YouTube_Downloader_v${VERSION}_Setup.exe \;
+
+          # macOS: DMG unchanged
+          find artifacts/youtube-downloader-mac-arm \
+            -name "*.dmg" \
+            -exec cp -v {} release_files/YouTube_Downloader_v${VERSION}_ARM.dmg \;
+
+          # Linux: .run self-extracting installer
+          find artifacts/youtube-downloader-linux \
+            -name "*.run" \
+            -exec cp -v {} release_files/YouTube_Downloader_v${VERSION}_Linux.run \;
+
+          # Make Linux installer executable in the release
+          chmod +x release_files/YouTube_Downloader_v${VERSION}_Linux.run || true
+
+          echo "--- Files to release ---"
+          ls -lh release_files/
 
       - name: Create Release and Upload
         uses: softprops/action-gh-release@v2
