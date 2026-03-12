@@ -19,8 +19,9 @@ from pathlib import Path
 with open(Path(__file__).parent.parent / 'version.json') as f:
     VERSION = json.load(f).get('version', '1.0.0')
 
-# The user-facing name of the final application with version
-APP_NAME   = f'YouTube Downloader v{VERSION}'
+# The user-facing name of the final application (constant across versions)
+APP_NAME    = 'YouTube Downloader'
+FILE_NAME   = 'YouTube_Downloader'
 
 # Path resolution for core files and output target
 SCRIPT     = Path(__file__).parent / 'app.py'
@@ -431,7 +432,7 @@ def package_dmg():
         return
     hdr('Pipeline: 3.5  -  Assembling Visual DMG (macOS)')
 
-    dmg_final = OUT_DIR / f'{APP_NAME}.dmg'
+    dmg_final = OUT_DIR / f'{FILE_NAME}_ARM.dmg'
     if dmg_final.exists():
         dmg_final.unlink()
 
@@ -684,7 +685,7 @@ def report():
         print('  - Windows: Building installer EXE...')
 
         portable_exe  = OUT_DIR / f'{APP_NAME}.exe'
-        installer_exe = OUT_DIR / f'{APP_NAME}_Setup.exe'
+        installer_exe = OUT_DIR / f'{FILE_NAME}_Setup.exe'
         iss_script    = OUT_DIR / 'installer.iss'
         icon_setup_line = f'SetupIconFile="{ICO.resolve()}"' if ICO.exists() else ''
 
@@ -696,7 +697,7 @@ def report():
             f'DefaultDirName={{autopf}}\\{APP_NAME}\n'
             f'DefaultGroupName={APP_NAME}\n'
             f'OutputDir={OUT_DIR.resolve()}\n'
-            f'OutputBaseFilename={APP_NAME}_Setup\n'
+            f'OutputBaseFilename={FILE_NAME}_Setup\n'
             f'Compression=lzma\n'
             f'SolidCompression=yes\n'
             + (f'{icon_setup_line}\n' if icon_setup_line else '')
@@ -774,8 +775,8 @@ def report():
         print('  - Linux: Building self-extracting installer...')
 
         bin_path     = OUT_DIR / APP_NAME
-        stage_dir    = OUT_DIR / f'{APP_NAME}_installer_stage'
-        installer_sh = OUT_DIR / f'{APP_NAME}_Installer.run'
+        stage_dir    = OUT_DIR / f'{FILE_NAME}_installer_stage'
+        installer_sh = OUT_DIR / f'{FILE_NAME}_Linux.run'
 
         if stage_dir.exists():
             shutil.rmtree(stage_dir)
