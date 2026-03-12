@@ -1,4 +1,4 @@
-name: Build and Release V1.0.0
+name: Build and Release
 
 on:
   push:
@@ -90,20 +90,20 @@ jobs:
           # Windows: _Setup.exe is the installer (portable .exe was deleted by build.py)
           find artifacts/youtube-downloader-win \
             -name "*_Setup.exe" \
-            -exec cp -v {} release_files/YouTube_Downloader_v${VERSION}_Setup.exe \;
+            -exec cp -v {} release_files/YouTube_Downloader_Setup.exe \;
 
           # macOS: DMG unchanged
           find artifacts/youtube-downloader-mac-arm \
             -name "*.dmg" \
-            -exec cp -v {} release_files/YouTube_Downloader_v${VERSION}_ARM.dmg \;
+            -exec cp -v {} release_files/YouTube_Downloader_ARM.dmg \;
 
           # Linux: .run self-extracting installer
           find artifacts/youtube-downloader-linux \
             -name "*.run" \
-            -exec cp -v {} release_files/YouTube_Downloader_v${VERSION}_Linux.run \;
+            -exec cp -v {} release_files/YouTube_Downloader_Linux.run \;
 
           # Make Linux installer executable in the release
-          chmod +x release_files/YouTube_Downloader_v${VERSION}_Linux.run || true
+          chmod +x release_files/YouTube_Downloader_Linux.run || true
 
           echo "--- Files to release ---"
           ls -lh release_files/

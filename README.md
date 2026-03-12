@@ -128,7 +128,7 @@ If you see a message saying **"Apple could not verify YouTube Downloader..."**, 
 ### Method 2: The Pro Way (Terminal)
 Run this command to remove the "quarantine" flag added by macOS:
 ```bash
-sudo xattr -rd com.apple.quarantine "/Applications/YouTube Downloader v1.0.0.app"
+sudo xattr -rd com.apple.quarantine "/Applications/YouTube Downloader.app"
 ```
 - The app will now open normally with a double-click from now on.
 
