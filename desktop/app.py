@@ -20,10 +20,10 @@ Key Architectural Decisions:
 
 import os, sys, shutil, threading, re, socket, tkinter as tk
 from tkinter import filedialog, messagebox
-import subprocess, json, urllib.request, webbrowser
+import subprocess, json, urllib.request, webbrowser, time
 
 # --- Application Identification and Update Configuration ---
-APP_VERSION = '1.0.3'
+APP_VERSION = '1.0.4'
 
 # The application checks this URL on startup for a version.json file.
 # The JSON should include 'version', 'mac_url', 'win_url', and 'changelog'.
@@ -685,9 +685,15 @@ class App:
 
         # Version display badge
         pro_f = tk.Frame(hdr, bg=ACCENT_D, padx=7, pady=2)
-        pro_f.pack(side='right', padx=16, pady=18)
+        pro_f.pack(side='right', padx=(8, 16), pady=18)
         tk.Label(pro_f, text=f'v{APP_VERSION}', bg=ACCENT_D, fg='#FFFFFF',
                  font=(F_MONO[0], 9, 'bold')).pack()
+
+        # Manual Update Button
+        make_btn(hdr, '⟳ Check Update', self._manual_update_check,
+                 BTN_GHOST_BG, BTN_GHOST_FG,
+                 hover_bg=BTN_GHOST_HOV, hover_fg=BTN_GHOST_HOV_FG,
+                 font=(F_BODY[0], 10, 'bold'), padx=8, pady=4).pack(side='right', pady=18)
 
         # Division line
         tk.Frame(self.root, bg=BORDER, height=1).pack(fill='x', side='top')
@@ -1210,7 +1216,8 @@ class App:
         Does not interrupt the user; silently logs readiness for update.
         """
         try:
-            req = urllib.request.Request(UPDATE_CHECK_URL, headers={
+            url_no_cache = f"{UPDATE_CHECK_URL}?t={int(time.time())}"
+            req = urllib.request.Request(url_no_cache, headers={
                 'User-Agent': GLOBAL_USER_AGENT,
                 'Cache-Control': 'no-cache'
             })
@@ -1224,6 +1231,33 @@ class App:
         except Exception:
             # Silent fail — ensures app remains functional even without internet
             pass
+
+    def _manual_update_check(self):
+        """Triggered by the user clicking the Update button in the header."""
+        self.status.set('Checking for updates...')
+        threading.Thread(target=self._run_manual_update_check, daemon=True).start()
+
+    def _run_manual_update_check(self):
+        """Actual HTTP logic for manual update check with user-facing alerts."""
+        try:
+            url_no_cache = f"{UPDATE_CHECK_URL}?t={int(time.time())}"
+            req = urllib.request.Request(url_no_cache, headers={
+                'User-Agent': GLOBAL_USER_AGENT,
+                'Cache-Control': 'no-cache'
+            })
+            resp = urllib.request.urlopen(req, timeout=10)
+            data = json.loads(resp.read().decode('utf-8'))
+
+            remote_ver = data.get('version', '0.0.0')
+            if self._version_newer(remote_ver, APP_VERSION):
+                self.root.after(0, lambda: self._show_update_dialog(data))
+                self.root.after(0, lambda: self.status.set('Update found!'))
+            else:
+                self.root.after(0, lambda: self.status.set('App is up to date.'))
+                self.root.after(0, lambda: messagebox.showinfo('Up to Date', f'You are running the latest version (v{APP_VERSION}).'))
+        except Exception as e:
+            self.root.after(0, lambda: self.status.set('Update check failed.'))
+            self.root.after(0, lambda: messagebox.showerror('Network Error', f'Could not securely check for updates.\n{e}'))
 
     @staticmethod
     def _version_newer(remote, local):
