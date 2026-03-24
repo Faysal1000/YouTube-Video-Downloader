@@ -20,7 +20,7 @@ Key Architectural Decisions:
 
 import os, sys, shutil, threading, re, socket, tkinter as tk
 from tkinter import filedialog, messagebox
-import subprocess, json, urllib.request, webbrowser, time
+import subprocess, json, urllib.request, webbrowser, time, ssl
 
 # --- Application Identification and Update Configuration ---
 APP_VERSION = '1.0.4'
@@ -683,17 +683,16 @@ class App:
         tk.Label(title_col, text='by Faysal', bg=PANEL, fg=FG3,
                  font=(F_BODY[0], 10)).pack(anchor='w')
 
-        # Version display badge
-        pro_f = tk.Frame(hdr, bg=ACCENT_D, padx=7, pady=2)
-        pro_f.pack(side='right', padx=(8, 16), pady=18)
-        tk.Label(pro_f, text=f'v{APP_VERSION}', bg=ACCENT_D, fg='#FFFFFF',
-                 font=(F_MONO[0], 9, 'bold')).pack()
+        # Version display badge (built using the same component so it matches height)
+        make_btn(hdr, f'v{APP_VERSION}', lambda: None,
+                 ACCENT_D, '#FFFFFF',
+                 font=(F_MONO[0], 10, 'bold'), padx=12, pady=6).pack(side='right', padx=(8, 16), pady=18)
 
         # Manual Update Button
         make_btn(hdr, '⟳ Check Update', self._manual_update_check,
                  BTN_GHOST_BG, BTN_GHOST_FG,
                  hover_bg=BTN_GHOST_HOV, hover_fg=BTN_GHOST_HOV_FG,
-                 font=(F_BODY[0], 10, 'bold'), padx=8, pady=4).pack(side='right', pady=18)
+                 font=(F_BODY[0], 10, 'bold'), padx=12, pady=6).pack(side='right', pady=18)
 
         # Division line
         tk.Frame(self.root, bg=BORDER, height=1).pack(fill='x', side='top')
@@ -1216,12 +1215,16 @@ class App:
         Does not interrupt the user; silently logs readiness for update.
         """
         try:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+
             url_no_cache = f"{UPDATE_CHECK_URL}?t={int(time.time())}"
             req = urllib.request.Request(url_no_cache, headers={
                 'User-Agent': GLOBAL_USER_AGENT,
                 'Cache-Control': 'no-cache'
             })
-            resp = urllib.request.urlopen(req, timeout=8)
+            resp = urllib.request.urlopen(req, timeout=8, context=ctx)
             data = json.loads(resp.read().decode('utf-8'))
 
             remote_ver = data.get('version', '0.0.0')
@@ -1240,12 +1243,16 @@ class App:
     def _run_manual_update_check(self):
         """Actual HTTP logic for manual update check with user-facing alerts."""
         try:
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+
             url_no_cache = f"{UPDATE_CHECK_URL}?t={int(time.time())}"
             req = urllib.request.Request(url_no_cache, headers={
                 'User-Agent': GLOBAL_USER_AGENT,
                 'Cache-Control': 'no-cache'
             })
-            resp = urllib.request.urlopen(req, timeout=10)
+            resp = urllib.request.urlopen(req, timeout=10, context=ctx)
             data = json.loads(resp.read().decode('utf-8'))
 
             remote_ver = data.get('version', '0.0.0')
