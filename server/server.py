@@ -141,7 +141,7 @@ _RUNTIME_OPTS = _get_runtime_opts()  # Cache at startup
 JOBS: dict[str, dict] = {}
 JOBS_LOCK = threading.Lock()
 
-def new_job(url, dl_type, quality, audio_fmt, video_fmt, playlist: bool = False) -> dict:
+def new_job(url, dl_type, quality, audio_fmt, video_fmt, playlist: bool = False, browser: str = "none") -> dict:
     jid = str(uuid.uuid4())[:8]
     job = {
         "id":        jid,
@@ -158,6 +158,7 @@ def new_job(url, dl_type, quality, audio_fmt, video_fmt, playlist: bool = False)
         "audio_fmt": audio_fmt,
         "video_fmt": video_fmt,
         "playlist":  playlist,
+        "browser":   browser,
         "created_at": datetime.now().isoformat(),
         "finished_at": None,
         "error":     "",
@@ -197,6 +198,7 @@ def _push_progress(job: dict):
 
 class InfoRequest(BaseModel):
     url: str
+    browser: str = "none"
 
 class DownloadRequest(BaseModel):
     url:       str
@@ -205,6 +207,7 @@ class DownloadRequest(BaseModel):
     audio_fmt: str = "mp3"
     video_fmt: str = "mp4"
     playlist:  bool = False
+    browser:   str = "none"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # yt-dlp helpers
@@ -238,6 +241,9 @@ def _ydl_base_opts(job: Optional[dict] = None) -> dict:
 
     if job:
         opts["progress_hooks"] = [lambda d, j=job: _progress_hook(j, d)]
+        b = job.get("browser")
+        if b and b != "none":
+            opts["cookiesfrombrowser"] = (b,)
 
     return opts
 
@@ -341,7 +347,7 @@ def _run_download(job: dict):
                         if not video_id: continue
                         video_url = f"https://www.youtube.com/watch?v={video_id}"
                     
-                    child = new_job(video_url, job["type"], job["quality"], job["audio_fmt"], job["video_fmt"])
+                    child = new_job(video_url, job["type"], job["quality"], job["audio_fmt"], job["video_fmt"], browser=job.get("browser", "none"))
                     child["title"] = entry.get("title") or "Video"
                     
                     # Notify UI of new child
@@ -440,6 +446,9 @@ async def get_info(req: InfoRequest):
             "lazy_playlist": True,
             "playlist_items": "1-50" # Limit preview fetch
         }
+        
+        if req.browser and req.browser != "none":
+            opts["cookiesfrombrowser"] = (req.browser,)
 
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(req.url, download=False)
@@ -479,7 +488,7 @@ async def get_info(req: InfoRequest):
 async def start_download(req: DownloadRequest):
     """Start a download job (single or playlist) and return identity instantly."""
     try:
-        job = new_job(req.url, req.type, req.quality, req.audio_fmt, req.video_fmt, playlist=req.playlist)
+        job = new_job(req.url, req.type, req.quality, req.audio_fmt, req.video_fmt, playlist=req.playlist, browser=req.browser)
         t = threading.Thread(target=_run_download, args=(job,), daemon=True)
         t.start()
         return {"ok": True, "job_id": job["id"]}

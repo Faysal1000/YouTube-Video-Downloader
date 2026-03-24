@@ -23,7 +23,7 @@ from tkinter import filedialog, messagebox
 import subprocess, json, urllib.request, webbrowser
 
 # --- Application Identification and Update Configuration ---
-APP_VERSION = '1.0.2'
+APP_VERSION = '1.0.3'
 
 # The application checks this URL on startup for a version.json file.
 # The JSON should include 'version', 'mac_url', 'win_url', and 'changelog'.
@@ -129,6 +129,7 @@ HAVE_YTDLP = False
 QUALITIES  = ['best','4320p','2160p','1440p','1080p','720p','480p','360p','240p','144p']
 VIDEO_FMTS = ['mp4','mkv','webm']
 AUDIO_FMTS = ['mp3','m4a','opus','wav','flac']
+BROWSERS   = ['none', 'chrome', 'safari', 'firefox', 'edge', 'brave', 'opera', 'vivaldi']
 
 # Professional dark theme color palette
 BG            = '#0C0C0E'   # Primary application background
@@ -378,7 +379,7 @@ def _get_runtime_opts():
 
 # --- yt-dlp Configuration Builder ---
 
-def build_opts(dl_type, quality, afmt, vfmt, outdir, hook, playlist=False):
+def build_opts(dl_type, quality, afmt, vfmt, outdir, hook, playlist=False, browser='none'):
     """
     Translates UI settings into a dictionary of options for the yt-dlp engine.
     
@@ -390,6 +391,7 @@ def build_opts(dl_type, quality, afmt, vfmt, outdir, hook, playlist=False):
         outdir (str): Destination directory
         hook (callable): Progress update callback
         playlist (bool): Whether to allow multi-video downloads
+        browser (str): Browser name to extract cookies from
     """
     # Define the file naming template
     outtmpl = os.path.join(outdir,
@@ -410,6 +412,9 @@ def build_opts(dl_type, quality, afmt, vfmt, outdir, hook, playlist=False):
             'Sec-Fetch-Mode': 'navigate',
         }
     }
+    
+    if browser and browser != 'none':
+        opts['cookiesfrombrowser'] = (browser,)
     
     if os.path.isdir(FFMPEG_DIR): 
         opts['ffmpeg_location'] = FFMPEG_DIR
@@ -582,6 +587,7 @@ class App:
 
         # --- Internal State Tracks ---
         self.url      = tk.StringVar()
+        self.browser_var = tk.StringVar(value='none')
         self.outdir   = tk.StringVar(value=os.path.expanduser('~/Downloads'))
         self.dl_type  = tk.StringVar(value='video')
         self.quality  = tk.StringVar(value='1080p')
@@ -597,7 +603,7 @@ class App:
         # UI element references (populated in _build_ui)
         self.dlb = self.log = self.pc = self.p_text = None
         self.lw  = self.log_toggle = self.log_sec  = None
-        self.qm  = self.vfr = self.afr             = None
+        self.qm  = self.vfr = self.afr = self.bm   = None
 
         # Phase 1: Build the primary UI immediately.
         # This makes the window appear instantly, providing feedback to the user.
@@ -804,7 +810,7 @@ class App:
 
         # Option: Container Format selection
         fc = self._pill_card(opt, 'FORMAT')
-        fc.pack(side='left', fill='both', expand=True)
+        fc.pack(side='left', fill='both', expand=True, padx=(0, 6))
         
         # Video format row
         self.vfr = tk.Frame(fc, bg=CARD)
@@ -817,6 +823,12 @@ class App:
         self.afr.pack(fill='x', padx=8, pady=(1, 5))
         tk.Label(self.afr, text='A', bg=CARD, fg=FG2, font=F_LABEL, width=2).pack(side='left')
         self._styled_menu(self.afr, self.afmt, AUDIO_FMTS).pack(side='left', fill='x', expand=True)
+
+        # Option: Browser Cookies
+        bc = self._pill_card(opt, 'COOKIES')
+        bc.pack(side='left', fill='both', expand=True)
+        self.bm = self._styled_menu(bc, self.browser_var, BROWSERS)
+        self.bm.pack(padx=10, pady=10, fill='x')
 
         # --- Feedback: Progress and Status ---
         self._label(body, 'PROGRESS')
@@ -1101,7 +1113,8 @@ class App:
                 self.vfmt.get(),
                 outdir,
                 self._hook,
-                self.playlist.get()
+                self.playlist.get(),
+                getattr(self, 'browser_var', tk.StringVar(value='none')).get()
             )
             
             self._log('Analysing stream data...', 'dim')
