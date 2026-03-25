@@ -42,37 +42,63 @@ except ImportError:
 # ─────────────────────────────────────────────────────────────────────────────
 import socket
 import urllib.request
+import json
 
 _orig_getaddrinfo = socket.getaddrinfo
 
+# Hardcoded IPs for our DoH resolvers to avoid DNS recursion loops
+DOH_HOST_MAP = {
+    'cloudflare-dns.com': '104.16.248.249',
+    'dns.google': '8.8.8.8'
+}
+
 def _doh_resolve(host):
     """Resolve blocked hostnames via Cloudflare or Google DNS over HTTPS."""
+    # List of DoH endpoints to try
     doh_apis = [
         f"https://cloudflare-dns.com/dns-query?name={host}&type=A",
         f"https://dns.google/resolve?name={host}&type=A"
     ]
     for url in doh_apis:
         try:
+            # We must use the original getaddrinfo implicitly by bypassing the patch for DoH hosts
             req = urllib.request.Request(url, headers={'accept': 'application/dns-json'})
-            with urllib.request.urlopen(req, timeout=3) as resp:
+            # We set a shorter timeout for DoH
+            with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json.loads(resp.read().decode('utf-8'))
                 for ans in data.get('Answer', []):
                     if ans.get('type') == 1: # A record
-                        return ans.get('data')
-        except Exception:
+                        ip = ans.get('data')
+                        if ip:
+                            print(f"[DNS Patch] Resolved {host} -> {ip} via DoH")
+                            return ip
+        except Exception as e:
+            # print(f"[DNS Patch] DoH attempt failed for {url}: {e}")
             continue
     return None
 
 def _patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    # Bypass patch for DoH hosts themselves to prevent infinite recursion
+    if host in DOH_HOST_MAP:
+        return _orig_getaddrinfo(DOH_HOST_MAP[host], port, family, type, proto, flags)
+    
     try:
         return _orig_getaddrinfo(host, port, family, type, proto, flags)
     except socket.gaierror as e:
-        err_code = e.errno if hasattr(e, 'errno') else None
-        # -5 = EAI_NODATA, -2 = EAI_NONAME
-        if err_code in (-5, -2, -3, 8):
-            ip = _doh_resolve(host)
-            if ip:
-                return _orig_getaddrinfo(ip, port, family, type, proto, flags)
+        # Check for typical resolution failure codes
+        # -5 (EAI_NODATA), -2 (EAI_NONAME), 8 (MAC/Linux variant)
+        err_code = e.args[0] if e.args else None
+        
+        # If it's a resolution error, try DoH fallback
+        print(f"[DNS Patch] Catching gaierror for {host} (code: {err_code})")
+        
+        # Try finding a real IP
+        ip = _doh_resolve(host)
+        if ip:
+            # Return result using the IP instead of the hostname
+            return _orig_getaddrinfo(ip, port, family, type, proto, flags)
+        
+        # Re-raise if DoH also failed or no IP found
         raise e
 
 # Overwrite globally so yt-dlp intrinsically bypasses DNS blocks
