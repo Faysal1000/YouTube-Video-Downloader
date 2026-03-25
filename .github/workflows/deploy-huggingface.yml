@@ -1,0 +1,38 @@
+name: Deploy to Hugging Face Spaces
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on any v-prefixed tag (like v1.0.4)
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Push to Hugging Face Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name "GitHub Actions"
+          
+          # Isolate only the files meant for the server (ignore Desktop/Action workflows)
+          mkdir build_hf
+          cp Dockerfile build_hf/
+          cp version.json build_hf/
+          cp -r server build_hf/
+          
+          # Init a fresh git tree consisting ONLY of the newly copied files
+          cd build_hf
+          git init -b main
+          git add .
+          git commit -m "Auto-Deploy Server Build ${{ github.sha }}"
+          
+          # Forcefully override the Hugging Face main branch with these isolated files
+          git remote add space https://user:$HF_TOKEN@huggingface.co/spaces/Faysal4200/video-downloader
+          git push -f space main

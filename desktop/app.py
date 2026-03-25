@@ -23,7 +23,7 @@ from tkinter import filedialog, messagebox
 import subprocess, json, urllib.request, webbrowser, time, ssl
 
 # --- Application Identification and Update Configuration ---
-APP_VERSION = '1.0.4'
+APP_VERSION = '1.0.5'
 
 # The application checks this URL on startup for a version.json file.
 # The JSON should include 'version', 'mac_url', 'win_url', and 'changelog'.

@@ -10,28 +10,34 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Set the working directory to /app
-WORKDIR /app
+# Set up a new non-root user (Hugging Face Spaces requirement)
+RUN useradd -m -u 1000 user
+USER user
 
-# Copy the server directory contents and the requirements file
-COPY server/ /app/server/
-COPY version.json /app/version.json
+# Set environment variables for the new user profile
+ENV HOME=/home/user \
+    PATH=/home/user/.local/bin:$PATH \
+    PORT=7860 \
+    PYTHONUNBUFFERED=1
+
+# Set the working directory to the user's space
+WORKDIR $HOME/app
+
+# Copy the server directory contents and the requirements file with proper ownership
+COPY --chown=user:user server/ $HOME/app/server/
+COPY --chown=user:user version.json $HOME/app/version.json
 
 # Set working directory to the server folder
-WORKDIR /app/server
+WORKDIR $HOME/app/server
 
-# Install Python dependencies
+# Install Python dependencies as the user
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create downloads directory with proper permissions
-RUN mkdir -p downloads && chmod 777 downloads
-
-# Set environment variables for Hugging Face Spaces
-ENV PORT=7860
-ENV PYTHONUNBUFFERED=1
+RUN mkdir -p downloads && chmod -R 777 downloads
 
 # Expose the port
 EXPOSE 7860
 
-# Run the server using uvicorn (bind to 0.0.0.0 for Docker)
-CMD uvicorn server:app --host 0.0.0.0 --port $PORT
+# Run the server
+CMD ["sh", "-c", "uvicorn server:app --host 0.0.0.0 --port $PORT"]
