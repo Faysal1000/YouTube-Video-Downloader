@@ -455,8 +455,12 @@ def _perform_individual_download(job: dict):
 
         class _Logger:
             def debug(self, m):   pass
-            def warning(self, m): job_log(job, f"⚠ {m}", "warn")
-            def error(self, m):   job_log(job, f"❌ {m}", "error")
+            def warning(self, m): 
+                print(f"[Job {job['id']}] ⚠ {m}")
+                job_log(job, f"⚠ {m}", "warn")
+            def error(self, m):   
+                print(f"❌ [Job {job['id']}] {m}")
+                job_log(job, f"❌ {m}", "error")
         opts["logger"] = _Logger()
 
         with yt_dlp.YoutubeDL(opts) as ydl:
@@ -485,6 +489,7 @@ def _perform_individual_download(job: dict):
     except yt_dlp.utils.DownloadCancelled:
         job["status"] = "cancelled"
     except Exception as e:
+        print(f"❌ Job {job['id']} critically failed: {e}")
         job["status"] = "error"
         job["error"]  = str(e)
     finally:
@@ -626,7 +631,8 @@ async def download_file(id: str):
 
     if job:
         if job["status"] != "done":
-            raise HTTPException(status_code=400, detail=f"Job status is '{job['status']}', not done")
+            err_msg = job.get("error") or f"Status is '{job['status']}'"
+            raise HTTPException(status_code=400, detail=f"Job not ready: {err_msg}")
         fpath = Path(job["filepath"])
         fname = job["filename"]
     else:
