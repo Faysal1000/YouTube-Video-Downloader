@@ -202,6 +202,21 @@ _RUNTIME_OPTS = _get_runtime_opts()  # Cache at startup
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Hugging Face Secret -> cookies.txt Sync
+# ─────────────────────────────────────────────────────────────────────────────
+def _sync_huggingface_cookies():
+    """If a Hugging Face secret 'YT_COOKIES' is set, use it to create cookies.txt."""
+    c_env = os.environ.get("YT_COOKIES")
+    if c_env:
+        try:
+            (BASE_DIR / "cookies.txt").write_text(c_env.strip(), encoding="utf-8")
+            print("✨ Successfully synced YT_COOKIES from Hugging Face Secrets")
+        except Exception as e:
+            print(f"⚠ Failed to sync YT_COOKIES secret: {e}")
+
+_sync_huggingface_cookies()
+
+# ─────────────────────────────────────────────────────────────────────────────
 # In-memory job store
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -299,6 +314,12 @@ def _ydl_base_opts(job: Optional[dict] = None) -> dict:
         "no_color": True,
         "logger": None,
         "force_ipv4": True,
+        "extractor_args": {
+            "youtube": {
+                "player_client": ["android", "ios", "web", "mweb"],
+                "player_skip": ["webpage", "configs"]
+            }
+        }
     }
     ff = _ffmpeg_location()
     if ff:
