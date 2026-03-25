@@ -46,16 +46,21 @@ import urllib.request
 _orig_getaddrinfo = socket.getaddrinfo
 
 def _doh_resolve(host):
-    """Resolve blocked hostnames via Cloudflare DNS over HTTPS."""
-    try:
-        url = f"https://cloudflare-dns.com/dns-query?name={host}&type=A"
-        req = urllib.request.Request(url, headers={'accept': 'application/dns-json'})
-        with urllib.request.urlopen(req, timeout=3) as resp:
-            for ans in json.loads(resp.read().decode('utf-8')).get('Answer', []):
-                if ans.get('type') == 1: # A record
-                    return ans.get('data')
-    except Exception:
-        pass
+    """Resolve blocked hostnames via Cloudflare or Google DNS over HTTPS."""
+    doh_apis = [
+        f"https://cloudflare-dns.com/dns-query?name={host}&type=A",
+        f"https://dns.google/resolve?name={host}&type=A"
+    ]
+    for url in doh_apis:
+        try:
+            req = urllib.request.Request(url, headers={'accept': 'application/dns-json'})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode('utf-8'))
+                for ans in data.get('Answer', []):
+                    if ans.get('type') == 1: # A record
+                        return ans.get('data')
+        except Exception:
+            continue
     return None
 
 def _patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
