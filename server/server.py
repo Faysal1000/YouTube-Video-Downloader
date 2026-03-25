@@ -231,7 +231,7 @@ def _ydl_base_opts(job: Optional[dict] = None) -> dict:
         "ignoreerrors": True,
         "no_color": True,
         "logger": None,
-        "source_address": "0.0.0.0",
+        "force_ipv4": True,
     }
     ff = _ffmpeg_location()
     if ff:
