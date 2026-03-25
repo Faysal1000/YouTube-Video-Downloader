@@ -32,7 +32,9 @@
   <img src="https://img.shields.io/badge/Developed%20By-Faysal%20Ahmmed-00D4C8?style=for-the-badge&logo=github" alt="Developer" />
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" />
   <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" />
-  <img src="https://img.shields.io/badge/yt--dlp-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="yt-dlp" />
+  <a href="https://huggingface.co/spaces/Faysal4200/video-downloader">
+    <img src="https://img.shields.io/badge/%F0%9F%A4%97_Hugging_Face-Live_Demo-FFD21E?style=for-the-badge&logo=huggingface&logoColor=black" alt="Hugging Face Space" />
+  </a>
 </p>
 
 ---
@@ -158,6 +160,18 @@ The Local Server turns your computer into a powerful private CDN for video downl
 - **SSE (Server-Sent Events)**: The `/api/progress/{id}` endpoint provides a low-latency stream of progress JSON objects.
 - **Static Assets**: Everything is packed into a single refined `index.html` for zero-friction deployment.
 - **Responsive Design**: Optimized for mobile browsers (Safari, Chrome) for one-tap downloads on the go.
+
+---
+
+## 🤗 Hugging Face Live Deployment (Recommended!)
+
+The absolute easiest way to use the Web GUI without installing anything locally is via the **Hugging Face Spaces Frontend Deployment**. The backend runs securely in a Dockerized environment and is synced automatically via our GitHub Actions pipeline!
+
+👉 **[Launch the Live Web App Here!](https://huggingface.co/spaces/Faysal4200/video-downloader)**
+
+- **Zero Setup**: No local Python or `ffmpeg` needed. Use the app directly from your browser.
+- **Always Updated**: Our CI/CD server pipeline ensures the Hugging Face space is always synchronized with the latest `main` branch.
+- **Mobile Friendly**: The ideal choice for downloading directly to your iPhone, iPad, or Android devices.
 
 ---
 
