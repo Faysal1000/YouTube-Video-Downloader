@@ -27,6 +27,17 @@ jobs:
           cp version.json build_hf/
           cp -r server build_hf/
           
+          # Generate the Hugging Face configuration README.md
+          echo "---" > build_hf/README.md
+          echo "title: YouTube Video Downloader" >> build_hf/README.md
+          echo "emoji: 🚀" >> build_hf/README.md
+          echo "colorFrom: blue" >> build_hf/README.md
+          echo "colorTo: indigo" >> build_hf/README.md
+          echo "sdk: docker" >> build_hf/README.md
+          echo "app_port: 7860" >> build_hf/README.md
+          echo "pinned: false" >> build_hf/README.md
+          echo "---" >> build_hf/README.md
+          
           # Init a fresh git tree consisting ONLY of the newly copied files
           cd build_hf
           git init -b main
