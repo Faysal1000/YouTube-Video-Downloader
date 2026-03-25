@@ -312,6 +312,11 @@ def _ydl_base_opts(job: Optional[dict] = None) -> dict:
         b = job.get("browser")
         if b and b != "none":
             opts["cookiesfrombrowser"] = (b,)
+    
+    # Check for manual cookies.txt in the server folder (Crucial for Hugging Face)
+    cookie_file = BASE_DIR / "cookies.txt"
+    if cookie_file.exists():
+        opts["cookiefile"] = str(cookie_file)
 
     return opts
 
@@ -467,8 +472,11 @@ def _perform_individual_download(job: dict):
             # Final metadata fetch if needed
             if not job.get("title"):
                 info = ydl.extract_info(job["url"], download=False)
-                job["title"] = info.get("title") or "Video"
-                _push_progress(job)
+                if info:
+                    job["title"] = info.get("title") or "Video"
+                    _push_progress(job)
+                else:
+                    raise RuntimeError("Failed to extract video info (Bot Detection?)")
             
             # Start actual download
             ydl.download([job["url"]])
@@ -568,6 +576,19 @@ async def start_download(req: DownloadRequest):
     except Exception as e:
         print(f"DL Start Error: {e}")
         return {"ok": False, "error": str(e)}
+
+class CookiesRequest(BaseModel):
+    text: str
+
+@app.post("/api/cookies")
+async def set_cookies(req: CookiesRequest):
+    """Save raw Netscape cookie text to cookies.txt."""
+    try:
+        (BASE_DIR / "cookies.txt").write_text(req.text, encoding="utf-8")
+        print("✅ Received and updated cookies.txt")
+        return {"ok": True, "message": "Cookies updated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/progress/{job_id}")

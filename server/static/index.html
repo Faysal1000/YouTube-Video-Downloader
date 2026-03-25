@@ -1221,6 +1221,9 @@
         <li class="nav-item" data-tab="stats" onclick="showTab('stats')">
           <i>📊</i> <span>Stats</span>
         </li>
+        <li class="nav-item" data-tab="settings" onclick="showTab('settings')">
+          <i>🔑</i> <span>Cloud Auth</span>
+        </li>
       </ul>
 
       <div class="disk-card">
@@ -1313,6 +1316,32 @@
         </div>
       </section>
 
+      <!-- Tab: Settings -->
+      <section id="tab-settings" class="section">
+        <div class="glass-card">
+          <h2 class="hero-title" style="font-size: 24px; margin-bottom: 8px;">Cloud Authentication</h2>
+          <p class="hero-subtitle" style="margin-bottom: 24px; text-align: left;">If you are using Hugging Face or another cloud provider, YouTube will block your downloads with a "Bot Detection" error. To fix this, export your YouTube cookies and paste them below.</p>
+          
+          <div class="opt-label">Paste Netscape Cookies (cookies.txt content)</div>
+          <textarea id="cookies-input" class="mega-input" style="height: 200px; padding-right: 28px; font-size: 12px; line-height: 1.5;" placeholder="# Netscape HTTP Cookie File..."></textarea>
+          
+          <div style="margin-top: 20px; display: flex; gap: 12px; align-items: center;">
+            <button class="action-btn" style="position: static; transform: none; padding: 14px 40px;" onclick="saveCookies()">Save Cookies</button>
+            <span id="cookies-status" style="font-size: 13px; font-weight: 600; color: var(--green); display: none;">✅ Saved!</span>
+          </div>
+
+          <div style="margin-top: 32px; padding: 20px; background: rgba(255,180,0,0.1); border: 1px solid rgba(255,180,0,0.2); border-radius: var(--radius-md); font-size: 14px; color: #ffd700;">
+            <strong>How to get cookies:</strong> 
+            <ol style="margin-top: 8px; margin-left: 20px; line-height: 1.6;">
+              <li>Install the <b>"Get cookies.txt LOCALLY"</b> extension in Chrome/Edge.</li>
+              <li>Open YouTube and log in.</li>
+              <li>Click the extension icon and copy the "Netscape" format text.</li>
+              <li>Paste it here and click Save.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
       <!-- Tab: Tasks -->
       <section id="tab-tasks" class="section">
         <div class="tasks-header">
@@ -1391,6 +1420,26 @@
       const over = document.getElementById('nav-overlay');
       if (side) side.classList.toggle('open', open);
       if (over) over.classList.toggle('open', open);
+    }
+
+    async function saveCookies() {
+      const text = document.getElementById('cookies-input').value.trim();
+      if (!text) return toast("❌ Please paste some cookies first");
+      
+      const status = document.getElementById('cookies-status');
+      try {
+        const r = await fetch('/api/cookies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        const d = await r.json();
+        if (d.ok) {
+          status.style.display = 'inline';
+          toast("✅ Cookies updated!");
+          setTimeout(() => status.style.display = 'none', 3000);
+        }
+      } catch (e) { toast("❌ Error saving cookies"); }
     }
 
     function showTab(tab) {
