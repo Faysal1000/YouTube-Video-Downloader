@@ -38,6 +38,42 @@ except ImportError:
     sys.exit(1)
 
 # ─────────────────────────────────────────────────────────────────────────────
+# DNS Sinkhole Bypass for Hugging Face Spaces (Resolves [Errno -5])
+# ─────────────────────────────────────────────────────────────────────────────
+import socket
+import urllib.request
+
+_orig_getaddrinfo = socket.getaddrinfo
+
+def _doh_resolve(host):
+    """Resolve blocked hostnames via Cloudflare DNS over HTTPS."""
+    try:
+        url = f"https://cloudflare-dns.com/dns-query?name={host}&type=A"
+        req = urllib.request.Request(url, headers={'accept': 'application/dns-json'})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            for ans in json.loads(resp.read().decode('utf-8')).get('Answer', []):
+                if ans.get('type') == 1: # A record
+                    return ans.get('data')
+    except Exception:
+        pass
+    return None
+
+def _patched_getaddrinfo(host, port, family=0, type=0, proto=0, flags=0):
+    try:
+        return _orig_getaddrinfo(host, port, family, type, proto, flags)
+    except socket.gaierror as e:
+        err_code = e.errno if hasattr(e, 'errno') else None
+        # -5 = EAI_NODATA, -2 = EAI_NONAME
+        if err_code in (-5, -2, -3, 8):
+            ip = _doh_resolve(host)
+            if ip:
+                return _orig_getaddrinfo(ip, port, family, type, proto, flags)
+        raise e
+
+# Overwrite globally so yt-dlp intrinsically bypasses DNS blocks
+socket.getaddrinfo = _patched_getaddrinfo
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Setup
 # ─────────────────────────────────────────────────────────────────────────────
 
