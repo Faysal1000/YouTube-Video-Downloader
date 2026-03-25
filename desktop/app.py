@@ -1263,8 +1263,10 @@ class App:
                 self.root.after(0, lambda: self.status.set('App is up to date.'))
                 self.root.after(0, lambda: messagebox.showinfo('Up to Date', f'You are running the latest version (v{APP_VERSION}).'))
         except Exception as e:
+            err_msg = str(e)
+            self.root.after(0, lambda: self._log(f'Manual update check crashed: {err_msg}', 'err'))
             self.root.after(0, lambda: self.status.set('Update check failed.'))
-            self.root.after(0, lambda: messagebox.showerror('Network Error', f'Could not securely check for updates.\n{e}'))
+            self.root.after(0, lambda err=err_msg: messagebox.showerror('Network Error', f'Could not securely check for updates.\n{err}'))
 
     @staticmethod
     def _version_newer(remote, local):
