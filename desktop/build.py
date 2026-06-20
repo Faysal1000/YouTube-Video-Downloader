@@ -41,7 +41,7 @@ ARCH    = platform.machine().lower()
 FFMPEG = {
     'win':      'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip',
     'mac_arm':  'https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffmpeg.zip',
-    'linux':    'https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz',
+    'linux':    'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz',
 }
 
 # Static URLs for Deno (optional JS runtime for complex YouTube challenges)
