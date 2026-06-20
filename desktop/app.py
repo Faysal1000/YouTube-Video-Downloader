@@ -23,7 +23,7 @@ from tkinter import filedialog, messagebox
 import subprocess, json, urllib.request, webbrowser, time, ssl
 
 # --- Application Identification and Update Configuration ---
-APP_VERSION = '1.0.5'
+APP_VERSION = '2.0.0'
 
 # The application checks this URL on startup for a version.json file.
 # The JSON should include 'version', 'mac_url', 'win_url', and 'changelog'.
@@ -599,6 +599,12 @@ class App:
         self._dl      = False # True if a download is currently active
         self._stop    = False # Set to True to signal the engine to abort
         self._log_visible = False
+        self._notifications = []
+        self._notif_panel_visible = False
+        self._notif_bell = None
+        self._notif_badge = None
+        self._notif_panel = None
+        self._notif_list_frame = None
 
         # UI element references (populated in _build_ui)
         self.dlb = self.log = self.pc = self.p_text = None
@@ -660,8 +666,12 @@ class App:
         Uses a vertically-stacked layout with a Header, Footer, and Body.
         """
 
+        # Create self._main_panel to contain all main download app controls
+        self._main_panel = tk.Frame(self.root, bg=BG)
+        self._main_panel.pack(side='left', fill='both', expand=True)
+
         # --- Header Section (App Name and Version) ---
-        hdr = tk.Frame(self.root, bg=PANEL, height=64)
+        hdr = tk.Frame(self._main_panel, bg=PANEL, height=64)
         hdr.pack(fill='x', side='top')
         hdr.pack_propagate(False)
 
@@ -684,22 +694,30 @@ class App:
                  font=(F_BODY[0], 10)).pack(anchor='w')
 
         # Version display badge (built using the same component so it matches height)
-        make_btn(hdr, f'v{APP_VERSION}', lambda: None,
+        make_btn(hdr, f'v{APP_VERSION}', self._show_about_and_update_dialog,
                  ACCENT_D, '#FFFFFF',
                  font=(F_MONO[0], 10, 'bold'), padx=12, pady=6).pack(side='right', padx=(8, 16), pady=18)
 
-        # Manual Update Button
-        make_btn(hdr, '⟳ Check Update', self._manual_update_check,
-                 BTN_GHOST_BG, BTN_GHOST_FG,
-                 hover_bg=BTN_GHOST_HOV, hover_fg=BTN_GHOST_HOV_FG,
-                 font=(F_BODY[0], 10, 'bold'), padx=12, pady=6).pack(side='right', pady=18)
+        # Notification Bell Frame
+        self._notif_bell_frame = tk.Frame(hdr, bg=PANEL, width=44, height=44)
+        self._notif_bell_frame.pack(side='right', padx=(4, 8), pady=10)
+        self._notif_bell_frame.pack_propagate(False)
+
+        self._notif_bell = tk.Label(self._notif_bell_frame, text="🔔", bg=PANEL, fg=FG2, font=(F_DISPLAY[0], 14), cursor='hand2')
+        self._notif_bell.place(relx=0.5, rely=0.5, anchor='center')
+
+        self._notif_badge = tk.Label(self._notif_bell_frame, text="", bg=RED, fg="#FFFFFF", font=(F_BODY[0], 8, 'bold'), padx=4, pady=1)
+
+        self._notif_bell.bind('<Enter>', lambda e: self._notif_bell.config(fg=ACCENT_L))
+        self._notif_bell.bind('<Leave>', lambda e: self._notif_bell.config(fg=GREEN if getattr(self, '_notifications', []) and not self._notif_panel_visible else FG2))
+        self._notif_bell.bind('<ButtonRelease-1>', lambda e: self._toggle_notif_panel())
 
         # Division line
-        tk.Frame(self.root, bg=BORDER, height=1).pack(fill='x', side='top')
+        tk.Frame(self._main_panel, bg=BORDER, height=1).pack(fill='x', side='top')
 
         # --- Footer Section (Main Action Controls) ---
-        tk.Frame(self.root, bg=BORDER, height=1).pack(fill='x', side='bottom')
-        footer = tk.Frame(self.root, bg=PANEL, pady=10)
+        tk.Frame(self._main_panel, bg=BORDER, height=1).pack(fill='x', side='bottom')
+        footer = tk.Frame(self._main_panel, bg=PANEL, pady=10)
         footer.pack(fill='x', side='bottom')
 
         # Playlist mode toggle (Custom Canvas Checkbox)
@@ -761,7 +779,7 @@ class App:
                  font=(F_BODY[0], 11), padx=8, pady=8).pack(side='right', padx=16)
 
         # --- Body Section (Configuration Inputs) ---
-        body = tk.Frame(self.root, bg=BG)
+        body = tk.Frame(self._main_panel, bg=BG)
         body.pack(fill='both', expand=True, padx=18, pady=(12, 0))
 
         # Input: YouTube URL
@@ -1019,6 +1037,247 @@ class App:
         else: 
             subprocess.Popen(['xdg-open', p])
 
+    def reveal_file(self, filepath):
+        """Opens the system file explorer, highlighting/selecting the specified file."""
+        if not filepath or not os.path.exists(filepath):
+            return
+            
+        filepath = os.path.abspath(filepath)
+        
+        if sys.platform == 'win32':
+            try:
+                # explorer.exe expects /select,"path" as a single string command line
+                cmd = f'explorer.exe /select,"{os.path.normpath(filepath)}"'
+                subprocess.Popen(cmd)
+            except Exception:
+                try:
+                    os.startfile(os.path.dirname(filepath))
+                except Exception:
+                    pass
+        elif sys.platform == 'darwin':
+            try:
+                subprocess.Popen(['open', '-R', filepath])
+            except Exception:
+                try:
+                    subprocess.Popen(['open', os.path.dirname(filepath)])
+                except Exception:
+                    pass
+        else:
+            # Linux: Try D-Bus org.freedesktop.FileManager1 to highlight the file
+            file_uri = f"file://{filepath}"
+            try:
+                subprocess.Popen([
+                    'dbus-send', '--session', '--dest=org.freedesktop.FileManager1',
+                    '/org/freedesktop/FileManager1', 'org.freedesktop.FileManager1.ShowItems',
+                    f'array:string:{file_uri}', 'string:'
+                ])
+            except Exception:
+                # Fallback to opening the parent directory
+                parent = os.path.dirname(filepath)
+                try:
+                    subprocess.Popen(['xdg-open', parent])
+                except Exception:
+                    pass
+
+    def _toggle_notif_panel(self):
+        """Toggles the collapsible right-side notifications panel and resizes the window."""
+        self.root.update_idletasks()
+        curr_w = self.root.winfo_width()
+        curr_h = self.root.winfo_height()
+        if curr_w <= 10:
+            curr_w = 450
+        if curr_h <= 10:
+            curr_h = 492
+            
+        # In case the panel has not been created yet, construct it
+        if not self._notif_panel:
+            self._notif_panel = tk.Frame(self.root, bg=PANEL, width=240, highlightbackground=BORDER, highlightthickness=1)
+            
+            # Panel Header
+            p_hdr = tk.Frame(self._notif_panel, bg=PANEL, pady=10, padx=12)
+            p_hdr.pack(fill='x', side='top')
+            
+            lbl_title = tk.Label(p_hdr, text="Downloads", bg=PANEL, fg=ACCENT_L, font=F_LABEL)
+            lbl_title.pack(side='left')
+            
+            # Clear All Link
+            btn_clear = tk.Label(p_hdr, text="Clear All", bg=PANEL, fg=FG3, font=(F_BODY[0], 9), cursor='hand2')
+            btn_clear.pack(side='right')
+            btn_clear.bind('<Enter>', lambda e: btn_clear.config(fg=RED))
+            btn_clear.bind('<Leave>', lambda e: btn_clear.config(fg=FG3))
+            btn_clear.bind('<ButtonRelease-1>', lambda e: self.clear_all_notifications())
+            
+            # Divider
+            tk.Frame(self._notif_panel, bg=BORDER, height=1).pack(fill='x', side='top')
+            
+            # Scrollable Notifications list area
+            canvas_container = tk.Frame(self._notif_panel, bg=PANEL)
+            canvas_container.pack(fill='both', expand=True, padx=8, pady=8)
+            
+            self._notif_canvas = tk.Canvas(canvas_container, bg=PANEL, highlightthickness=0)
+            self._notif_canvas.pack(side='left', fill='both', expand=True)
+            
+            sb = tk.Scrollbar(canvas_container, orient='vertical', command=self._notif_canvas.yview, bg=BG, troughcolor=PANEL, width=8, bd=0, highlightthickness=0, relief='flat')
+            sb.pack(side='right', fill='y')
+            
+            self._notif_canvas.config(yscrollcommand=sb.set)
+            
+            self._notif_list_frame = tk.Frame(self._notif_canvas, bg=PANEL)
+            self._notif_canvas_window = self._notif_canvas.create_window((0, 0), window=self._notif_list_frame, anchor='nw')
+            
+            def _configure_frame(e):
+                self._notif_canvas.itemconfig(self._notif_canvas_window, width=e.width)
+                self._notif_canvas.config(scrollregion=self._notif_canvas.bbox('all'))
+                
+            self._notif_list_frame.bind('<Configure>', lambda e: self._notif_canvas.config(scrollregion=self._notif_canvas.bbox('all')))
+            self._notif_canvas.bind('<Configure>', _configure_frame)
+
+        if self._notif_panel_visible:
+            # Hide the panel
+            self._notif_panel.pack_forget()
+            self._notif_panel_visible = False
+            # Force Tkinter layout engine to process pack_forget before resizing
+            self.root.update_idletasks()
+            # Reduce window width back to original
+            self.root.geometry(f"{max(450, curr_w - 240)}x{curr_h}")
+            self.root.update()
+        else:
+            # Show the panel
+            self._notif_panel.pack(side='right', fill='y')
+            self._notif_panel_visible = True
+            # Force Tkinter layout engine to process pack before resizing
+            self.root.update_idletasks()
+            # Expand window width
+            self.root.geometry(f"{curr_w + 240}x{curr_h}")
+            # Render notifications
+            self._render_notifications()
+            self.root.update()
+            
+        self._update_bell_ui()
+
+    def _render_notifications(self):
+        """Clears and re-draws the list of notification cards inside the scrollable sidebar."""
+        if not self._notif_list_frame:
+            return
+            
+        # Clean up existing list items
+        for child in self._notif_list_frame.winfo_children():
+            child.destroy()
+            
+        if not self._notifications:
+            lbl_empty = tk.Label(self._notif_list_frame, text="No new downloads", bg=PANEL, fg=FG3, font=(F_BODY[0], 10), pady=40)
+            lbl_empty.pack(fill='x', anchor='center')
+            return
+            
+        # Populate new items
+        for idx, item in enumerate(self._notifications):
+            filepath = item['path']
+            filename = item['name']
+            
+            # Notification card container
+            card = tk.Frame(self._notif_list_frame, bg=CARD, highlightbackground=BORDER, highlightthickness=1, padx=10, pady=8)
+            card.pack(fill='x', pady=4, padx=2)
+            
+            # Hover animations
+            def _make_hover_handlers(c=card):
+                c.bind('<Enter>', lambda e: c.config(bg='#1F1F28', highlightbackground=ACCENT))
+                c.bind('<Leave>', lambda e: c.config(bg=CARD, highlightbackground=BORDER))
+            _make_hover_handlers()
+            
+            # Left side icon
+            lbl_icon = tk.Label(card, text="✓", bg=CARD, fg=GREEN, font=(F_BODY[0], 10, 'bold'))
+            lbl_icon.pack(side='left', padx=(0, 6))
+            
+            # File name text
+            lbl_name = tk.Label(card, text=filename, bg=CARD, fg=FG2, font=(F_BODY[0], 9), wraplength=145, justify='left', anchor='w')
+            lbl_name.pack(side='left', fill='x', expand=True)
+            
+            # Delete button
+            btn_del = tk.Label(card, text="✕", bg=CARD, fg=FG3, font=(F_BODY[0], 9, 'bold'), cursor='hand2')
+            btn_del.pack(side='right', padx=(4, 0))
+            
+            # Interactions
+            def _bind_clicks(c=card, ln=lbl_name, li=lbl_icon, fp=filepath, itm=item, bd=btn_del):
+                def _on_reveal(e):
+                    self.reveal_file(fp)
+                    
+                def _on_delete(e):
+                    self.remove_notification_by_item(itm)
+                    
+                # Card elements reveal the file
+                for w in (c, ln, li):
+                    w.bind('<ButtonRelease-1>', _on_reveal)
+                    w.config(cursor='hand2')
+                    if w != c:
+                        w.bind('<Enter>', lambda e: c.config(bg='#1F1F28', highlightbackground=ACCENT))
+                        w.bind('<Leave>', lambda e: c.config(bg=CARD, highlightbackground=BORDER))
+                        
+                # Dismiss button removes the card
+                bd.bind('<ButtonRelease-1>', _on_delete)
+                bd.bind('<Enter>', lambda e: (bd.config(fg=RED), c.config(bg='#1F1F28', highlightbackground=ACCENT)))
+                bd.bind('<Leave>', lambda e: (bd.config(fg=FG3), c.config(bg=CARD, highlightbackground=BORDER)))
+                
+            _bind_clicks()
+
+    def add_notification(self, filepath):
+        """Appends a new downloaded file path to the session notification list."""
+        if not filepath or not os.path.exists(filepath):
+            return
+            
+        filename = os.path.basename(filepath)
+        # Avoid duplicate paths in notifications
+        if any(n['path'] == filepath for n in self._notifications):
+            return
+            
+        self._notifications.insert(0, {'path': filepath, 'name': filename})
+        
+        # Flash the bell if panel is closed
+        if not self._notif_panel_visible:
+            self._flash_bell()
+            
+        self._update_bell_ui()
+        if self._notif_panel_visible:
+            self._render_notifications()
+
+    def remove_notification_by_item(self, item):
+        """Removes a notification dictionary reference from the list."""
+        if item in self._notifications:
+            self._notifications.remove(item)
+            self._update_bell_ui()
+            self._render_notifications()
+
+    def clear_all_notifications(self):
+        """Clears all session notifications."""
+        self._notifications.clear()
+        self._update_bell_ui()
+        self._render_notifications()
+
+    def _update_bell_ui(self):
+        """Updates the notification bell badge count and state."""
+        if not self._notif_bell or not self._notif_badge:
+            return
+            
+        count = len(self._notifications)
+        if count > 0:
+            self._notif_badge.config(text=str(count))
+            self._notif_badge.place(relx=0.8, rely=0.2, anchor='center')
+            self._notif_bell.config(fg=GREEN if not self._notif_panel_visible else FG2)
+        else:
+            self._notif_badge.place_forget()
+            self._notif_bell.config(fg=FG2)
+
+    def _flash_bell(self, count=6):
+        """Flashes the bell icon color between green and standard to alert the user."""
+        if not self._notif_bell:
+            return
+        if count <= 0 or self._notif_panel_visible:
+            self._update_bell_ui()
+            return
+        current_fg = self._notif_bell.cget('fg')
+        next_fg = GREEN if current_fg != GREEN else FG2
+        self._notif_bell.config(fg=next_fg)
+        self.root.after(250, lambda: self._flash_bell(count - 1))
+
     def _clear_log(self):
         """Wipes the console output buffer."""
         self.log.config(state='normal')
@@ -1089,6 +1348,7 @@ class App:
         # Prepare UI for active work
         self._dl   = True
         self._stop = False
+        self._last_downloaded_file = None
         self.pct.set(0)
         self._bar()
         self.status.set('Preparing download...')
@@ -1134,7 +1394,22 @@ class App:
             except ImportError:
                 self._log('Notice: Running without extended JS support.', 'warn')
 
+            class PathPP(yt_dlp.postprocessor.common.PostProcessor):
+                def __init__(self, downloader=None, callback=None):
+                    super().__init__(downloader)
+                    self.callback = callback
+
+                def run(self, info):
+                    filepath = info.get('filepath')
+                    if filepath:
+                        self.callback(filepath)
+                    return [], info
+
             with yt_dlp.YoutubeDL(opts) as ydl:
+                def _on_path(path):
+                    self.root.after(0, lambda p=path: self.add_notification(p))
+                
+                ydl.add_post_processor(PathPP(ydl, _on_path), when='after_move')
                 # Main extraction call
                 ydl.download([url])
             
@@ -1235,13 +1510,37 @@ class App:
             # Silent fail — ensures app remains functional even without internet
             pass
 
-    def _manual_update_check(self):
-        """Triggered by the user clicking the Update button in the header."""
-        self.status.set('Checking for updates...')
-        threading.Thread(target=self._run_manual_update_check, daemon=True).start()
+    def _show_about_and_update_dialog(self):
+        """Opens a custom modal window showing the current version and checks for updates."""
+        dlg = tk.Toplevel(self.root)
+        dlg.title('About & Update Check')
+        dlg.configure(bg=PANEL)
+        dlg.resizable(False, False)
+        dlg.transient(self.root) # Stay on top of main window
+        dlg.grab_set()
 
-    def _run_manual_update_check(self):
-        """Actual HTTP logic for manual update check with user-facing alerts."""
+        # Center the dialog on screen
+        dlg.update_idletasks()
+        pw, ph = self.root.winfo_width(), self.root.winfo_height()
+        px, py = self.root.winfo_x(), self.root.winfo_y()
+        dw, dh = 380, 240
+        dlg.geometry(f'{dw}x{dh}+{px + (pw-dw)//2}+{py + (ph-dh)//2}')
+
+        tk.Label(dlg, text='YouTube Downloader', bg=PANEL, fg=FG, font=(F_DISPLAY[0], 20, 'bold')).pack(pady=(20, 4))
+        tk.Label(dlg, text=f'Current Version: v{APP_VERSION}', bg=PANEL, fg=ACCENT_L, font=(F_BODY[0], 12, 'bold')).pack()
+
+        lbl_status = tk.Label(dlg, text='Checking for updates...', bg=PANEL, fg=FG2, font=F_BODY, wraplength=320, justify='center')
+        lbl_status.pack(pady=(15, 10))
+
+        # Bottom row for action buttons
+        btn_row = tk.Frame(dlg, bg=PANEL)
+        btn_row.pack(side='bottom', pady=(0, 20))
+
+        # Run background update check
+        threading.Thread(target=lambda: self._run_about_update_check(lbl_status, btn_row, dlg), daemon=True).start()
+
+    def _run_about_update_check(self, lbl_status, btn_row, dlg):
+        """Asynchronously contacts GitHub to check for updates and updates the About dialog UI."""
         try:
             ctx = ssl.create_default_context()
             ctx.check_hostname = False
@@ -1252,21 +1551,68 @@ class App:
                 'User-Agent': GLOBAL_USER_AGENT,
                 'Cache-Control': 'no-cache'
             })
-            resp = urllib.request.urlopen(req, timeout=10, context=ctx)
+            resp = urllib.request.urlopen(req, timeout=8, context=ctx)
             data = json.loads(resp.read().decode('utf-8'))
 
             remote_ver = data.get('version', '0.0.0')
-            if self._version_newer(remote_ver, APP_VERSION):
-                self.root.after(0, lambda: self._show_update_dialog(data))
-                self.root.after(0, lambda: self.status.set('Update found!'))
+            changelog  = data.get('changelog', '')
+            
+            if sys.platform == 'win32':
+                dl_url = data.get('win_url', '')
+            elif sys.platform == 'darwin':
+                dl_url = data.get('mac_url', '')
             else:
-                self.root.after(0, lambda: self.status.set('App is up to date.'))
-                self.root.after(0, lambda: messagebox.showinfo('Up to Date', f'You are running the latest version (v{APP_VERSION}).'))
+                dl_url = data.get('linux_url', '')
+
+            if self._version_newer(remote_ver, APP_VERSION):
+                # Update found!
+                self.root.after(0, lambda: self._show_update_found_in_about(lbl_status, btn_row, dlg, remote_ver, changelog, dl_url))
+            else:
+                # Up to date
+                self.root.after(0, lambda: self._show_up_to_date_in_about(lbl_status, btn_row, dlg))
         except Exception as e:
             err_msg = str(e)
-            self.root.after(0, lambda: self._log(f'Manual update check crashed: {err_msg}', 'err'))
-            self.root.after(0, lambda: self.status.set('Update check failed.'))
-            self.root.after(0, lambda err=err_msg: messagebox.showerror('Network Error', f'Could not securely check for updates.\n{err}'))
+            self.root.after(0, lambda: self._show_update_failed_in_about(lbl_status, btn_row, dlg, err_msg))
+
+    def _show_update_found_in_about(self, lbl_status, btn_row, dlg, remote_ver, changelog, dl_url):
+        lbl_status.config(text=f"A new version v{remote_ver} is available!", fg=GREEN)
+        
+        # If there's a changelog, we can increase the dialog height and show it
+        if changelog:
+            dlg.geometry("380x320")
+            lbl_change = tk.Label(dlg, text=f"Changelog:\n{changelog}", bg=PANEL, fg=FG3, font=(F_BODY[0], 9), wraplength=320, justify='center')
+            lbl_change.pack(before=btn_row, pady=(0, 10))
+            
+        def _download():
+            if dl_url:
+                webbrowser.open(dl_url)
+            dlg.destroy()
+
+        make_btn(btn_row, 'Download Update', _download,
+                 BTN_PRIMARY_BG, BTN_PRIMARY_FG,
+                 hover_bg=BTN_PRIMARY_HOV, hover_fg=BTN_PRIMARY_HOV_FG,
+                 font=F_BTN, padx=16, pady=8).pack(side='left', padx=6)
+
+        make_btn(btn_row, 'Close', dlg.destroy,
+                 BTN_GHOST_BG, BTN_GHOST_FG,
+                 hover_bg=BTN_GHOST_HOV, hover_fg=BTN_GHOST_HOV_FG,
+                 font=F_BTN, padx=12, pady=8).pack(side='left', padx=6)
+
+    def _show_up_to_date_in_about(self, lbl_status, btn_row, dlg):
+        lbl_status.config(text="You are running the latest version! ✓", fg=GREEN)
+        
+        make_btn(btn_row, 'OK', dlg.destroy,
+                 BTN_PRIMARY_BG, BTN_PRIMARY_FG,
+                 hover_bg=BTN_PRIMARY_HOV, hover_fg=BTN_PRIMARY_HOV_FG,
+                 font=F_BTN, padx=20, pady=8).pack()
+
+    def _show_update_failed_in_about(self, lbl_status, btn_row, dlg, err_msg):
+        lbl_status.config(text=f"Update check failed.\n{err_msg}", fg=RED)
+        
+        make_btn(btn_row, 'Close', dlg.destroy,
+                 BTN_GHOST_BG, BTN_GHOST_FG,
+                 hover_bg=BTN_GHOST_HOV, hover_fg=BTN_GHOST_HOV_FG,
+                 font=F_BTN, padx=16, pady=8).pack()
 
     @staticmethod
     def _version_newer(remote, local):
