@@ -23,7 +23,7 @@ from tkinter import filedialog, messagebox
 import subprocess, json, urllib.request, webbrowser, time, ssl
 
 # --- Application Identification and Update Configuration ---
-APP_VERSION = '2.0.0'
+APP_VERSION = '2.0.1'
 
 # The application checks this URL on startup for a version.json file.
 # The JSON should include 'version', 'mac_url', 'win_url', and 'changelog'.
@@ -107,12 +107,28 @@ try:
 except Exception:
     pass
 
+def get_app_dir():
+    """
+    Returns the path to the directory containing the application files.
+    When frozen, this is the directory containing the executable.
+    When running from source, it is the directory containing app.py.
+    """
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
 def setup_ffmpeg():
     """
     Locates the bundled ffmpeg binaries and adds them to the system PATH.
     This ensures yt-dlp can find the encoders needed for media merging.
     """
-    d = res('ffmpeg_bin')
+    # 1. Check next to the executable/script (e.g., installation folder)
+    d = os.path.join(get_app_dir(), 'ffmpeg_bin')
+    
+    # 2. Fallback to PyInstaller temporary directory (_MEIPASS)
+    if not os.path.isdir(d):
+        d = res('ffmpeg_bin')
+        
     if os.path.isdir(d):
         os.environ['PATH'] = d + os.pathsep + os.environ.get('PATH', '')
     return d
@@ -393,15 +409,16 @@ def build_opts(dl_type, quality, afmt, vfmt, outdir, hook, playlist=False, brows
         playlist (bool): Whether to allow multi-video downloads
         browser (str): Browser name to extract cookies from
     """
-    # Define the file naming template
+    # Define the file naming template, restricting length to 100 characters to prevent path length errors
     outtmpl = os.path.join(outdir,
-        '%(playlist_index)s-%(title)s.%(ext)s' if playlist else '%(title)s.%(ext)s')
+        '%(playlist_index)s-%(title.0:100)s.%(ext)s' if playlist else '%(title.0:100)s.%(ext)s')
     
     # Baseline options: logging setup, progress tracking, and binary locations
     opts = {
         'outtmpl': outtmpl, 
         'quiet': True, 
-        'no_warnings': True,
+        'no_warnings': False,
+        'windowsfilenames': True,  # Ensure compatibility with Windows filesystem
         'progress_hooks': [hook], 
         'noplaylist': not playlist,
         'user_agent': GLOBAL_USER_AGENT,
@@ -536,6 +553,25 @@ class Splash:
         except Exception: 
             pass
         self._frame.destroy()
+
+
+class YTDLPLogger:
+    def __init__(self, app):
+        self.app = app
+
+    def debug(self, msg):
+        # We can log download, ffmpeg, and extractaudio steps as dim progress logs
+        if msg.startswith('[download]') or msg.startswith('[ffmpeg]') or msg.startswith('[ExtractAudio]'):
+            clean_msg = re.sub(r'\x1b\[[0-9;]*m', '', msg)
+            self.app.root.after(0, lambda: self.app._log(clean_msg, 'dim'))
+
+    def warning(self, msg):
+        clean_msg = re.sub(r'\x1b\[[0-9;]*m', '', msg)
+        self.app.root.after(0, lambda: self.app._log(f"Warning: {clean_msg}", 'warn'))
+
+    def error(self, msg):
+        clean_msg = re.sub(r'\x1b\[[0-9;]*m', '', msg)
+        self.app.root.after(0, lambda: self.app._log(f"Error: {clean_msg}", 'err'))
 
 
 # --- Main Application Controller ---
@@ -1381,6 +1417,8 @@ class App:
                 self.playlist.get(),
                 getattr(self, 'browser_var', tk.StringVar(value='none')).get()
             )
+            # Register custom logger to redirect yt-dlp outputs to the UI log console
+            opts['logger'] = YTDLPLogger(self)
             
             self._log('Analysing stream data...', 'dim')
             self._log('Checking extraction scripts...', 'dim')

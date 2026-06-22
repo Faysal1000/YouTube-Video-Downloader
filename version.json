@@ -1,7 +1,7 @@
 {
-    "version": "2.0.0",
-    "mac_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/download/v2.0.0/YouTube_Downloader_ARM.dmg",
-    "win_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/download/v2.0.0/YouTube_Downloader_Setup.exe",
-    "linux_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/download/v2.0.0/YouTube_Downloader_Linux.run",
-    "changelog": "v2.0.0: Added dynamic download notifications sidebar, interactive version updates check, and layout sizing optimizations."
+    "version": "2.0.1",
+    "mac_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/download/v2.0.1/YouTube_Downloader_ARM.dmg",
+    "win_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/download/v2.0.1/YouTube_Downloader_Setup.exe",
+    "linux_url": "https://github.com/Faysal1000/YouTube-Video-Downloader/releases/download/v2.0.1/YouTube_Downloader_Linux.run",
+    "changelog": "v2.0.1: Bug fix release addressing Windows invalid filename errors (long filenames/illegal characters) and enhancing logs/FFmpeg paths."
 }
